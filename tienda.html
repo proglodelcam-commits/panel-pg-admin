@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>PG del Campo - Del campo a su mesa</title>
-<meta name="theme-color" content="#1b382b">
+<meta name="theme-color" content="#2E7D32">
 <meta name="description" content="Productos nicaragüenses de calidad: Café, Pinolillo y Pinol. Directamente del campo a su mesa en Jinotepe, Carazo.">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
-<link rel="icon" type="image/x-icon" href="favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="./favicon-16.png">
+<link rel="icon" type="image/x-icon" href="./favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PG Campo">
@@ -217,6 +217,24 @@ footer{background-color:var(--primary-dark);color:var(--white);padding:24px 0 40
 .install-banner{position:fixed;bottom:60px;left:0;width:100%;background-color:var(--primary-color);color:white;padding:12px 16px;display:none;justify-content:space-between;align-items:center;box-shadow:0 -2px 10px rgba(0,0,0,0.15);z-index:999}
 .install-banner p{font-size:13px;flex-grow:1}
 .install-banner button{background-color:var(--white);color:var(--primary-color);border:none;padding:6px 14px;border-radius:20px;font-weight:600;font-size:12px;margin-left:10px}
+
+/* ===== Banner Carrusel ===== */
+.carrusel-wrap{position:relative;width:100%;max-width:100%;overflow:hidden;border-radius:0 0 16px 16px;margin-bottom:18px;background:#000}
+.carrusel-track{display:flex;transition:transform .45s cubic-bezier(.4,0,.2,1);will-change:transform}
+.carrusel-slide{min-width:100%;position:relative;display:flex;align-items:center;justify-content:center}
+.carrusel-slide img{width:100%;height:auto;display:block;object-fit:cover;max-height:220px}
+.carrusel-slide iframe{width:100%;height:220px;border:none}
+.carrusel-slide .slide-overlay{position:absolute;bottom:0;left:0;right:0;padding:12px 14px 10px;background:linear-gradient(transparent,rgba(0,0,0,.72));color:#fff}
+.carrusel-slide .slide-overlay h3{font-size:13.5px;font-weight:700;margin-bottom:2px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.carrusel-slide .slide-overlay p{font-size:11px;opacity:.88;line-height:1.3}
+.carrusel-dots{display:flex;justify-content:center;gap:6px;padding:8px 0;background:#1b382b}
+.carrusel-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35);border:none;cursor:pointer;padding:0;transition:all .25s}
+.carrusel-dot.active{background:#c8963e;transform:scale(1.25)}
+.carrusel-btn{position:absolute;top:50%;transform:translateY(-50%);background:rgba(27,56,43,.65);color:#fff;border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:14px;z-index:5;transition:background .2s;display:flex;align-items:center;justify-content:center}
+.carrusel-btn:hover{background:rgba(27,56,43,.88)}
+.carrusel-btn.prev{left:6px}
+.carrusel-btn.next{right:6px}
+.carrusel-empty{text-align:center;color:var(--text-muted);padding:24px 16px;font-size:12.5px;background:var(--bg-cream);border-radius:0 0 16px 16px;margin-bottom:18px}
 
 /* Print */
 @page{size:80mm auto;margin:0}
@@ -482,6 +500,14 @@ footer{background-color:var(--primary-dark);color:var(--white);padding:24px 0 40
         <a href="#productos" class="btn-hero nav-link" data-target="productos">Explorar Catálogo</a>
       </div>
     </div>
+
+    <!-- Carrusel de Anuncios (Firebase: anuncios/) -->
+    <div class="container" style="padding:0 16px">
+      <div id="carrusel-container">
+        <div class="carrusel-empty"><i class="fas fa-bullhorn" style="margin-right:6px"></i>Cargando anuncios…</div>
+      </div>
+    </div>
+
     <div class="container">
       <div class="about-card">
         <h3>Nuestra Historia</h3>
@@ -799,10 +825,6 @@ footer{background-color:var(--primary-dark);color:var(--white);padding:24px 0 40
 </nav>
 
 <!-- Chatbot -->
-<!-- Portal Home Button -->
-<a href="index.html" id="portalHome" title="Portal PG del Campo" style="position:fixed;bottom:70px;right:16px;width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#1b382b,#2e6b3e);color:#c9a84c;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:999;font-size:1rem;text-decoration:none;transition:transform .2s"><i class="fas fa-th-large"></i></a>
-<style>#portalHome:hover{transform:scale(1.12)}</style>
-
 <div id="chatbot-launcher" onclick="toggleChatBot()" title="Consultar a BotsPG">
   <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
     <!-- Bot body / droplet shape -->
@@ -1041,7 +1063,7 @@ var installBanner=document.getElementById('installBanner');
 var installBtn=document.getElementById('installBtn');
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
-    navigator.serviceWorker.register('sw.js').catch(function(err){console.log('SW Error: ',err);});
+    navigator.serviceWorker.register('./sw.js').catch(function(err){console.log('SW Error: ',err);});
   });
 }
 window.addEventListener('beforeinstallprompt',function(e){
@@ -1119,7 +1141,7 @@ window.evaluarTecla=evaluarTecla;
 <!-- Script: Firebase + Lógica de negocio -->
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getDatabase,ref,onValue,get,set,update,runTransaction}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import{getDatabase,ref,onValue,get,set,update}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
 const cfg={
   apiKey:'AIzaSyBfPmfE6axd_W0Z80b0L-Jbjy6q7l9_NTk',
@@ -1143,6 +1165,67 @@ const $=id=>document.getElementById(id),
 /* ── Listeners de Firebase (tiempo real) ── */
 onValue(ref(db,'productos'),s=>{productos=s.val()||{};render()});
 onValue(ref(db,'clientes'),s=>{clientes=s.val()||{};cliente()});
+onValue(ref(db,'anuncios'),s=>{renderCarrusel(s.val()||{})});
+
+/* ── Carrusel de Anuncios ── */
+let _carruselTimer=null;
+function renderCarrusel(anuncios){
+  const box=document.getElementById('carrusel-container');
+  if(!box)return;
+  const activos=Object.entries(anuncios).filter(([_,v])=>v.activo!==false).map(([k,v])=>({id:k,...v}));
+  if(!activos.length){
+    box.innerHTML='<div class="carrusel-empty"><i class="fas fa-bullhorn" style="margin-right:6px"></i>Próximamente más promociones</div>';
+    if(_carruselTimer){clearInterval(_carruselTimer);_carruselTimer=null;}
+    return;
+  }
+  let html='<div class="carrusel-wrap"><div class="carrusel-track" id="carrusel-track">';
+  activos.forEach(function(a){
+    html+='<div class="carrusel-slide">';
+    if(a.tipo==='video'&&a.url){
+      html+='<iframe src="'+a.url+'" allow="autoplay;encrypted-media" allowfullscreen loading="lazy"></iframe>';
+    }else if(a.imagen){
+      html+='<img src="'+a.imagen+'" alt="'+(a.titulo||'Anuncio')+'" loading="lazy">';
+    }else{
+      html+='<div style="width:100%;height:180px;display:flex;align-items:center;justify-content:center;background:var(--primary);color:#fff;font-size:15px;font-weight:600;padding:20px;text-align:center">'+(a.titulo||'Anuncio')+'</div>';
+    }
+    if(a.titulo||a.descripcion){
+      html+='<div class="slide-overlay">';
+      if(a.titulo)html+='<h3>'+E(a.titulo)+'</h3>';
+      if(a.descripcion)html+='<p>'+E(a.descripcion)+'</p>';
+      html+='</div>';
+    }
+    html+='</div>';
+  });
+  html+='</div>';
+  if(activos.length>1){
+    html+='<button class="carrusel-btn prev" onclick="carruselMove(-1)">&#8249;</button>';
+    html+='<button class="carrusel-btn next" onclick="carruselMove(1)">&#8250;</button>';
+  }
+  html+='</div>';
+  if(activos.length>1){
+    html+='<div class="carrusel-dots" id="carrusel-dots">';
+    activos.forEach(function(_,i){
+      html+='<button class="carrusel-dot'+(i===0?' active':'')+'" onclick="carruselGo('+i+')"></button>';
+    });
+    html+='</div>';
+  }
+  box.innerHTML=html;
+  _carruselIdx=0;_carruselLen=activos.length;
+  if(_carruselTimer)clearInterval(_carruselTimer);
+  if(_carruselLen>1)_carruselTimer=setInterval(function(){carruselMove(1)},4500);
+}
+let _carruselIdx=0,_carruselLen=0;
+window.carruselMove=function(dir){
+  _carruselIdx=(_carruselIdx+dir+_carruselLen)%_carruselLen;
+  carruselGo(_carruselIdx);
+};
+window.carruselGo=function(idx){
+  _carruselIdx=idx;
+  var track=document.getElementById('carrusel-track');
+  if(track)track.style.transform='translateX(-'+idx*100+'%)';
+  var dots=document.querySelectorAll('.carrusel-dot');
+  dots.forEach(function(d,i){d.classList.toggle('active',i===idx);});
+};
 
 /* ── Render catálogo (nuevas tarjetas PWA) ── */
 function render(){
@@ -1246,13 +1329,8 @@ window.calc=calc;function calc(){
 
 /* ── Contador de recibos ── */
 async function nextReceipt(){
-  let r=ref(db,'meta/contador_recibo');
-  let result=await runTransaction(r,current=>{
-    if(current===null)return 1002;
-    return(current||1001)+1;
-  });
-  let n=result.snapshot.exists()?+result.snapshot.val()-1:1001;
-  if(!result.committed)n=Math.max(n,1001);
+  let r=ref(db,'meta/contador_recibo'),s=await get(r),n=s.exists()?+s.val():1001;
+  await set(r,n+1);
   return String(n).padStart(7,'0');
 }
 

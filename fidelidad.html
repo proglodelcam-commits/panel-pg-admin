@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Productos Globales del Campo | Tienda en Línea y Fidelidad</title>
+<title>Club PG del Campo | Clientes Frecuentes</title>
 
 <!-- PWA / App Install -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -11,23 +11,23 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="PG del Campo">
-<meta name="application-name" content="PG del Campo">
-<meta name="description" content="Distribución inteligente del campo a tu hogar. Estrellas, promociones y despacho directo en un solo lugar.">
+<meta name="apple-mobile-web-app-title" content="Club PG">
+<meta name="application-name" content="Club PG">
+<meta name="description" content="Tu Club de Clientes frecuentes. Acumula estrellas, accede a promociones exclusivas y disfruta beneficios en cada compra.">
 <meta name="msapplication-TileColor" content="#1b382b">
 <meta name="msapplication-navbutton-color" content="#1b382b">
 
 <!-- App Icons -->
 <link rel="icon" type="image/x-icon" href="favicon.ico">
-<link rel="icon" type="image/png" sizes="48x48" href="icons/favicon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 
 <!-- Open Graph / Social -->
-<meta property="og:title" content="PG del Campo - Tienda en Línea">
-<meta property="og:description" content="Distribución inteligente del campo a tu hogar. Estrellas, promociones y despacho directo.">
+<meta property="og:title" content="Club PG del Campo - Clientes Frecuentes">
+<meta property="og:description" content="Tu Club de Clientes frecuentes. Acumula estrellas, accede a promociones exclusivas y disfruta beneficios.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="android-chrome-512x512.png">
 
@@ -264,7 +264,6 @@ body { background-color: var(--bg-cream); color: var(--text-dark); line-height: 
   margin: 18px 0;
   padding: 5px 0;
 }
-.stamp-slot-10.anulado { opacity:.4; border:2px dashed #e57373; background:rgba(220,53,69,.06); }
 .stamp-slot-10 {
   width: 100%;
   aspect-ratio: 1;
@@ -591,7 +590,7 @@ body { background-color: var(--bg-cream); color: var(--text-dark); line-height: 
 .btn-recibo:hover { background-color: var(--primary-dark); }
 .btn-lafise-direct { background-color: #005691; color: white; margin-top: 8px; text-decoration: none; text-align: center; }
 .btn-lafise-direct:hover { background-color: #003d66; }
-.floating-cart-badge { position: fixed; bottom: 20px; right: 20px; background-color: var(--leaf); color: white; padding: 14px 20px; border-radius: 30px; box-shadow: 0 6px 20px rgba(142,176,87,0.4); display: none; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; cursor: pointer; z-index: 1000; text-decoration: none; transition: var(--transition); }
+.floating-cart-badge { position: fixed; bottom: 80px; right: 24px; background-color: var(--leaf); color: white; padding: 14px 20px; border-radius: 30px; box-shadow: 0 6px 20px rgba(142,176,87,0.4); display: none; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; cursor: pointer; z-index: 1000; text-decoration: none; transition: var(--transition); }
 .floating-cart-badge:hover { transform: scale(1.05); background-color: #7da049; }
 .floating-count { background-color: #dc3545; color: white; border-radius: 50%; padding: 2px 8px; font-size: 11px; }
 @media (max-width: 900px) { .floating-cart-badge { display: flex; } }
@@ -832,7 +831,7 @@ body { background-color: var(--bg-cream); color: var(--text-dark); line-height: 
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, get, child, set, update, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, get, child, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AlzaSyBfPmfE6axd_WOZ80b0L-Jbjy6q719_NTk",
@@ -1014,21 +1013,13 @@ window.verMisSellosYEntrar = async function() {
     const snapshot = await get(child(ref(db), `clientes/${telefono}`));
     let totalCompras = 0;
     let nombreCliente = "Cliente Frecuente";
-    let estadoEstrellas = 'activo';
-    let pagoVerificado = false;
-    let estrellasActivadasPorVerif = false;
     if (snapshot.exists()) {
       const data = snapshot.val();
       totalCompras = parseInt(data.total_compras || 0);
       nombreCliente = data.nombre || nombreCliente;
       clienteTotalComprasHistorial = totalCompras;
       clienteMontoTotalHistorial = parseFloat(data.monto_total || 0);
-      estadoEstrellas = data.estado_estrellas || 'activo';
-      pagoVerificado = data.pago_lafise_verificado === true;
-      estrellasActivadasPorVerif = data.estrellas_activadas_por_verificacion === true;
     }
-    
-    // If stars are nullified, override display
     let sellosActuales = totalCompras % 10;
     if (sellosActuales === 0 && totalCompras > 0) {
       sellosActuales = 10;
@@ -1036,35 +1027,17 @@ window.verMisSellosYEntrar = async function() {
     } else {
       tienePremioActivo = false;
     }
-    if (estadoEstrellas === 'anulado') {
-      sellosActuales = 0;
-      tienePremioActivo = false;
-    }
-    
-    let resumenTexto;
-    if (estadoEstrellas === 'anulado') {
-      resumenTexto = `Hola, <strong>${nombreCliente}</strong>. Tu tarjeta de fidelidad se encuentra temporalmente <strong style="color:#dc3545">anulada</strong>. Comunícate con nosotros al <a href="https://wa.me/50557973097" style="color:var(--leaf);text-decoration:none">WhatsApp</a> para verificar tu estado.`;
-    } else if (pagoVerificado && estrellasActivadasPorVerif) {
-      resumenTexto = `¡Hola de nuevo, <strong>${nombreCliente}</strong>! Tu pago ha sido <strong style="color:#2e8b57">verificado</strong> y tus estrellas están <strong style="color:#c8963e">activas</strong>. Cuentas con <strong>${totalCompras}</strong> compras registradas.`;
-    } else if (totalCompras === 0) {
-      resumenTexto = "¡Bienvenido a PG del Campo! Estás por iniciar tu primera tarjeta digital de estrellas.";
-    } else {
-      resumenTexto = `¡Hola de nuevo, <strong>${nombreCliente}</strong>! Cuentas con <strong>${totalCompras}</strong> compras en nuestro registro histórico.`;
-    }
+    let resumenTexto = totalCompras === 0
+      ? "¡Bienvenido a PG del Campo! Estás por iniciar tu primera tarjeta digital de estrellas."
+      : `¡Hola de nuevo, <strong>${nombreCliente}</strong>! Cuentas con <strong>${totalCompras}</strong> compras en nuestro registro histórico.`;
     
     let html = `<p class='client-placeholder' style='margin:15px 0 10px;'>${resumenTexto}</p>`;
-    
-    // Show verification badge if payment was verified
-    if (pagoVerificado) {
-      html += `<div style="text-align:center;margin-bottom:10px"><span style="display:inline-block;background:rgba(46,139,87,.12);color:#2e8b57;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px"><i class="fas fa-check-circle"></i> Pago LAFISE Verificado</span></div>`;
-    }
-    
     html += '<div class="stamp-grid-10">';
     for (let i = 1; i <= 10; i++) {
-      if (i <= sellosActuales && estadoEstrellas !== 'anulado') {
+      if (i <= sellosActuales) {
         html += `<div class="stamp-slot-10 active">⭐<span class="stamp-number-10">${i}</span></div>`;
       } else {
-        html += `<div class="stamp-slot-10${estadoEstrellas === 'anulado' ? ' anulado' : ''}">◯<span class="stamp-number-10">${i}</span></div>`;
+        html += `<div class="stamp-slot-10">◯<span class="stamp-number-10">${i}</span></div>`;
       }
     }
     html += '</div>';
@@ -1202,47 +1175,33 @@ async function registrarPedidoEnFirebase(totalPagar, numeroReciboFormateado) {
   try {
     const nuevasCompras = clienteTotalComprasHistorial + 1;
     const nuevoMonto = clienteMontoTotalHistorial + totalPagar;
-    const ahora = new Date().toISOString();
-    const compraId = 'recibo_' + numeroReciboFormateado;
-    const items = {};
-    carrito.forEach(item => { items[item.key] = item.cant; });
-
-    // Use update() instead of set() to preserve estado_estrellas, pago_lafise_verificado, compras, etc.
-    const clientUpdates = {};
-    clientUpdates['clientes/' + tel + '/nombre'] = nombre;
-    clientUpdates['clientes/' + tel + '/total_compras'] = nuevasCompras;
-    clientUpdates['clientes/' + tel + '/monto_total'] = nuevoMonto;
-    clientUpdates['clientes/' + tel + '/ultima_compra'] = ahora;
-    clientUpdates['clientes/' + tel + '/estado_estrellas'] = 'activo';
-    clientUpdates['clientes/' + tel + '/compras/' + compraId] = {
-      id: compraId, fecha: ahora, numero_recibo: numeroReciboFormateado,
-      tipo: 'Venta al contado', estado: 'pagada', total: totalPagar,
-      monto_pagado: totalPagar, saldo_pendiente: 0, items: items
-    };
-    clientUpdates['compras_registro/' + compraId] = {
-      id: numeroReciboFormateado, fecha: ahora,
-      whatsapp_cliente: tel, nombre_cliente: nombre,
-      numero_recibo: numeroReciboFormateado,
-      items: items, total: totalPagar, monto_pagado: totalPagar,
-      saldo_pendiente: 0, estado: 'pagada', tipo: 'contado',
-      metodo_pago: 'lafise'
-    };
-    clientUpdates['transacciones/' + compraId] = {
-      id: compraId, fecha: ahora, cliente: nombre, whatsapp: tel,
-      tipo: 'Venta al contado', monto: totalPagar, monto_pagado: totalPagar,
-      saldo_pendiente: 0, estado: 'pagada', numero_recibo: numeroReciboFormateado,
-      metodo_pago: 'lafise'
-    };
-
-    await update(ref(db), clientUpdates);
+    await set(ref(db, 'clientes/' + tel), {
+      nombre: nombre,
+      total_compras: nuevasCompras,
+      monto_total: nuevoMonto,
+      ultima_compra: new Date().toISOString()
+    });
 
     for (let item of carrito) {
       const currentProd = productosData[item.key];
       if (currentProd) {
         const nuevoStock = Math.max(0, parseInt(currentProd.stock || 0) - item.cant);
-        await update(ref(db, 'productos/' + item.key), { stock: nuevoStock });
+        await set(ref(db, 'productos/' + item.key), {...currentProd, stock: nuevoStock });
       }
     }
+
+    const compraId = 'recibo_' + numeroReciboFormateado;
+    const items = {};
+    carrito.forEach(item => { items[item.key] = item.cant; });
+
+    await set(ref(db, 'compras_registro/' + compraId), {
+      id: numeroReciboFormateado,
+      fecha: new Date().toLocaleString('es-NI', { timeZone: 'America/Managua' }),
+      whatsapp_cliente: tel,
+      cliente_nombre: nombre,
+      items: items,
+      monto_revertir: totalPagar
+    });
   } catch (e) {
     console.error("Error al asentar transacciones en Firebase:", e);
   }
@@ -1250,18 +1209,15 @@ async function registrarPedidoEnFirebase(totalPagar, numeroReciboFormateado) {
 
 async function obtenerSiguienteRecibo() {
   try {
-    // Serie B — Tarjeta de Fidelidad
-    const contadorRef = ref(db, 'meta/contador_recibo_B');
-    let result = await runTransaction(contadorRef, current => {
-      if (current === null) return 2;
-      return (current || 1) + 1;
-    });
-    let n = result.snapshot.exists() ? +result.snapshot.val() - 1 : 1;
-    if (!result.committed) n = Math.max(n, 1);
-    return 'B-' + String(n).padStart(7, '0');
+    const contadorRef = ref(db, 'secuencia_recibos');
+    const snapContador = await get(contadorRef);
+    let ultimoNumero = snapContador.exists() ? parseInt(snapContador.val() || 0) : 1000;
+    let nuevoNumeroRecibo = ultimoNumero + 1;
+    await set(contadorRef, nuevoNumeroRecibo);
+    return String(nuevoNumeroRecibo).padStart(7, '0');
   } catch (e) {
-    console.warn("Fallo al sincronizar contador Serie B de recibos. Generando número alternativo:", e);
-    return 'B-' + String(Date.now()).slice(-7);
+    console.warn("Fallo al sincronizar contador global de recibos. Generando número alternativo:", e);
+    return String(Date.now()).slice(-7);
   }
 }
 
@@ -1291,68 +1247,45 @@ window.procesarPagoWhatsApp = async function() {
 
   const numeroReciboFormateado = await obtenerSiguienteRecibo();
   const urlLafiseDinamico = generarUrlLafise(totalPagar, numeroReciboFormateado);
-  const fecha=new Date();const opts={year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false};
-  const fechaStr=fecha.toLocaleString('es-NI',opts).replace(',','');
-  const serie=numeroReciboFormateado.startsWith('A-')?'A — Tienda en Línea':numeroReciboFormateado.startsWith('B-')?'B — Tarjeta de Fidelidad':'Estándar';
 
-  let msj = '';
-  msj += '╔══════════════════════════╗\n';
-  msj += '║  *PRODUCTOS GLOBALES*     ║\n';
-  msj += '║     *DEL CAMPO*           ║\n';
-  msj += '╚══════════════════════════╝\n\n';
-  msj += '🌿 *BS"D*\n';
-  msj += 'Todo lo Bueno viene de Dios,\ncon su ayuda todo es posible realizar\n\n';
-  msj += '━━━━━━━━━━━━━━━━━━━━━━━━\n';
-  msj += '📋 *RECIBO OFICIAL*\n';
-  msj += '━━━━━━━━━━━━━━━━━━━━━━━━\n';
-  msj += `🔹 *No.:* ${numeroReciboFormateado}\n`;
-  msj += `🔹 *Serie:* ${serie}\n`;
-  msj += `🔹 *Fecha:* ${fechaStr}\n`;
-  msj += `🔹 *Cliente:* ${cliente}\n`;
-  msj += `🔹 *Teléfono:* ${telf}\n`;
-  msj += `🔹 *Modalidad:* ${metodoPago==='lafise'?'VENTA AL CONTADO — Transferencia / LAFISE Digital':'VENTA AL CONTADO — Pago Contra Entrega'}\n`;
-  if(dir && dir!=='Retiro en Sucursal') msj += `🔹 *Dirección:* ${dir}\n`;
-  msj += `🔹 *Despacho:* ${nombreZona}\n`;
-  msj += '\n━━━━━━━━━━━━━━━━━━━━━━━━\n';
-  msj += '🛒 *DETALLE DE PRODUCTOS*\n';
-  msj += '━━━━━━━━━━━━━━━━━━━━━━━━\n';
+  let msj = '*NUEVO PEDIDO - PG DEL CAMPO*\n';
+  msj += '=============================\n';
+  msj += `*Recibo N°:* ${numeroReciboFormateado}\n`;
+  msj += `*Cliente:* ${cliente}\n`;
+  msj += `*Teléfono:* ${telf}\n`;
+  msj += '=============================\n\n';
+
+  msj += '*DETALLE DE PRODUCTOS:*\n';
   carrito.forEach(i => {
-    msj += `  ${i.cant}× ${i.nombre}\n`;
-    msj += `    → C$ ${(i.precio * i.cant).toFixed(2)}\n`;
+    msj += `${i.nombre}\n`;
+    msj += `Cantidad: ${i.cant} | Subtotal: C$ ${(i.precio * i.cant).toFixed(2)}\n`;
   });
-  msj += '\n';
-  msj += '┌──────────────────────────┐\n';
-  msj += `│ Subtotal:      C$ ${subtotal.toFixed(2).padStart(10)}│\n`;
-  if (porcTotal > 0) msj += `│ 🏷 Desc. (${(porcTotal*100).toFixed(0)}%):    -C$ ${montoDescuento.toFixed(2).padStart(8)}│\n`;
-  msj += `│ 🚚 Envío:       C$ ${(esAConvenir?' A convenir':envio.toFixed(2).padStart(10))}│\n`;
-  msj += '├──────────────────────────┤\n';
+
+  msj += '\n=============================\n';
+  msj += `*Subtotal:* C$ ${subtotal.toFixed(2)}\n`;
+  if (porcTotal > 0) msj += `*Descuento (${(porcTotal * 100).toFixed(0)}%):* -C$ ${montoDescuento.toFixed(2)}\n`;
+  msj += `*Modalidad Envío:* ${nombreZona}\n`;
+  msj += `*Dirección:* ${dir || 'Retiro en Sucursal'}\n\n`;
+
   msj += esAConvenir
-    ? `│ 💰 *TOTAL:*     *C$ ${(subtotal-montoDescuento).toFixed(2).padStart(10)}*│\n+ envío a convenir\n`
-    : `│ 💰 *TOTAL:*     *C$ ${totalPagar.toFixed(2).padStart(10)}*│\n`;
-  msj += '└──────────────────────────┘\n\n';
-  msj += '✅ *ESTADO:* PAGADO\n\n';
-  msj += '━━━━━━━━━━━━━━━━━━━━━━━━\n';
-  msj += '🏦 *DATOS DE PAGO LAFISE*\n';
-  msj += '━━━━━━━━━━━━━━━━━━━━━━━━\n';
-  msj += 'Titular: *Fernando Martínez*\n';
-  msj += '(Representante Legal PG del Campo)\n';
-  msj += 'Cuenta N°: *140051265*\n';
-  msj += 'Alias ACH/Móvil LAFISE: *5797 3097*\n';
-  msj += `Monto exacto: *C$ ${totalPagar.toFixed(2)}*\n`;
+    ? `*TOTAL (Envío por definir):* C$ ${(subtotal - montoDescuento).toFixed(2)}\n`
+    : `*TOTAL COMPRA NETO:* C$ ${totalPagar.toFixed(2)}\n`;
+  msj += '=============================\n\n';
+
   if (metodoPago === 'lafise') {
-    msj += '\n🔗 *PAGAR AHORA:*\n';
+    msj += '*MÉTODO DE PAGO: Transferencia / LAFISE Digital*\n';
+    msj += 'Titular de la Cuenta: *Fernando Martínez* (Representante Legal PG del Campo)\n';
+    msj += 'Cuenta N°: *140051265*\n';
+    msj += 'Alias ACH/Móvil LAFISE: *5797 3097*\n\n';
+    msj += 'Puedes realizar tu pago directo haciendo clic en el siguiente enlace:\n';
     msj += `${urlLafiseDinamico}\n\n`;
   } else {
-    msj += '\n💳 Pago Contra Entrega:\n';
-    msj += 'Abonar al momento de recibir el pedido.\n\n';
+    msj += '*MÉTODO DE PAGO: Pago Contra Entrega*\n';
+    msj += 'El cliente abonará el monto total en efectivo o mediante transferencia al momento de recibir su pedido.\n\n';
   }
-  msj += 'RÚC: 0452907730000U\n';
-  msj += 'Régimen: Cuota Fija\n';
-  msj += 'Jinotepe, Carazo — Nicaragua\n\n';
-  msj += '📱 WhatsApp: 50557973097\n';
-  msj += '¡Gracias por preferirnos e\nimpulsar el campo! 🌾\n\n';
-  msj += '*BS"D*\n';
-  msj += 'Todo lo Bueno viene de Dios,\ncon su ayuda todo es posible realizar';
+
+  msj += 'BS"D\n';
+  msj += 'Todo lo Bueno viene de Dios, con su ayuda todo es posible realizar\n';
 
   await registrarPedidoEnFirebase(totalPagar, numeroReciboFormateado);
 
@@ -1438,10 +1371,6 @@ window.cerrarModalRecibo = function() {
   document.getElementById('receipt-modal').style.display = 'none';
 };
 </script>
-
-<!-- Portal Home Button -->
-<a href="index.html" id="portalHome" title="Portal PG del Campo" style="position:fixed;bottom:20px;right:16px;width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#1b382b,#2e6b3e);color:#c9a84c;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.25);z-index:999;font-size:1rem;text-decoration:none;transition:transform .2s"><i class="fas fa-th-large"></i></a>
-<style>#portalHome:hover{transform:scale(1.12)}</style>
 
 <!-- PWA Service Worker -->
 <script>
