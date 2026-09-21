@@ -172,6 +172,42 @@ function calcPromos(sub, comprasPrevias){
 /* Puntos de fidelidad ganados por una lista de items del carrito */
 function puntosDeItems(items){ return (items||[]).reduce((s,it)=>{ const p=PRODUCTOS.find(x=>x.id===it.id); const pts=(p&&p.puntos)?p.puntos:Math.round((+it.precio||0)/20); return s+pts*(+it.q||1); },0); }
 
+/* ---------- ALERTAS: clientes próximos a su 10.ª compra ----------
+   PROMO_ALERTA_UMBRAL = cuántas compras restantes disparan el aviso (1..5).
+   Configurable desde el módulo Promociones y persistente en el navegador. */
+let PROMO_ALERTA_UMBRAL = (function(){ try{ return Math.min(5,Math.max(1,+localStorage.getItem('pg_alerta_umbral')||2)); }catch(e){ return 2; } })();
+let PROMO_ALERTA_ON = (function(){ try{ return localStorage.getItem('pg_alerta_on')!=='0'; }catch(e){ return true; } })();
+/* Compras que faltan para la próxima 10.ª (1..cada) */
+function faltaDecima(compras){ compras=+compras||0; return PROMOS.decima.cada - (compras % PROMOS.decima.cada); }
+/* Lista de clientes registrados dentro del umbral de aviso, ordenados por cercanía */
+function clientesProximosDecima(umbral){
+  umbral=umbral||PROMO_ALERTA_UMBRAL;
+  return CLIENTES.filter(c=>c.tarjeta&&c.tarjeta!=='\u2014'&&(+c.compras>0))
+    .map(c=>({c, falta:faltaDecima(c.compras)}))
+    .filter(o=>o.falta<=umbral)
+    .sort((a,b)=>a.falta-b.falta||(+b.c.compras)-(+a.c.compras));
+}
+function setAlertaUmbral(v){ PROMO_ALERTA_UMBRAL=Math.min(5,Math.max(1,+v||1)); try{localStorage.setItem('pg_alerta_umbral',PROMO_ALERTA_UMBRAL);}catch(e){} refrescar(); }
+function toggleAlertas(on){ PROMO_ALERTA_ON=!!on; try{localStorage.setItem('pg_alerta_on',PROMO_ALERTA_ON?'1':'0');}catch(e){} refrescar(); }
+/* Banner de alerta reutilizable (dashboard y promociones) */
+function bannerAlertaDecima(){
+  if(!PROMO_ALERTA_ON) return '';
+  const lista=clientesProximosDecima();
+  if(!lista.length) return '';
+  const chips=lista.slice(0,6).map(o=>`<span class="inline-flex items-center gap-1 text-[11px] bg-white/85 text-pg-green px-2 py-0.5 rounded-full font-semibold">${esc(o.c.nombre)} · ${o.falta===1?'¡próxima compra!':('faltan '+o.falta)}</span>`).join(' ');
+  const extra=lista.length>6?`<span class="text-[11px] opacity-90">+${lista.length-6} más</span>`:'';
+  return `<div class="rounded-2xl shadow-soft p-4 mb-5 text-white" style="background:linear-gradient(135deg,#c8963e,#a9781f)">
+    <div class="flex items-start gap-3">
+      <i class="fa-solid fa-bell text-xl mt-0.5"></i>
+      <div class="flex-1">
+        <p class="font-bold text-sm">${lista.length} cliente(s) próximo(s) a su 10.ª compra (premio ${PROMOS.decima.pct}%)</p>
+        <div class="flex flex-wrap gap-1.5 mt-2">${chips} ${extra}</div>
+      </div>
+      <button onclick="go('promos')" class="shrink-0 text-[11px] bg-white/90 text-pg-gold2 font-semibold px-3 py-1.5 rounded-lg hover:bg-white">Ver detalle</button>
+    </div>
+  </div>`;
+}
+
 /* ---------- Utilidades de imagen (galería / Google Drive / Kyte) ---------- */
 const DRIVE_FOLDER = 'https://drive.google.com/drive/folders/177wP-bxy9qY7ttcPUJ6XnSApvHOi5_ny?hl=es-419';
 const KYTE_STORE   = 'https://proglodelcampo.catalog.kyte.site';
@@ -197,11 +233,11 @@ let PRODUCTOS = [
 
 /* ---------- CLIENTES / FIDELIDAD ---------- */
 let CLIENTES = [
-  { id:'C1', nombre:'Ana Torres', tel:'8888-1122', tarjeta:'PG-0001', puntos:120, compras:8, saldo:0 },
-  { id:'C2', nombre:'Luis Gómez', tel:'8777-3344', tarjeta:'PG-0002', puntos:60,  compras:4, saldo:250 },
-  { id:'C3', nombre:'Rosa Díaz',  tel:'8555-9988', tarjeta:'PG-0003', puntos:200, compras:14,saldo:0 },
-  { id:'C4', nombre:'Jorge Mena', tel:'8444-2200', tarjeta:'PG-0004', puntos:35,  compras:3, saldo:120 },
-  { id:'C5', nombre:'Karla Soto', tel:'8999-7766', tarjeta:'PG-0005', puntos:90,  compras:6, saldo:0 }
+  { id:'C1', nombre:'Ana Torres', tel:'8888-1122', tarjeta:'PG-0001', puntos:120, compras:8, saldo:0, alta:'2026-01-15' },
+  { id:'C2', nombre:'Luis Gómez', tel:'8777-3344', tarjeta:'PG-0002', puntos:60,  compras:4, saldo:250, alta:'2026-03-02' },
+  { id:'C3', nombre:'Rosa Díaz',  tel:'8555-9988', tarjeta:'PG-0003', puntos:200, compras:14,saldo:0, alta:'2026-05-20' },
+  { id:'C4', nombre:'Jorge Mena', tel:'8444-2200', tarjeta:'PG-0004', puntos:35,  compras:3, saldo:120, alta:'2026-09-05' },
+  { id:'C5', nombre:'Karla Soto', tel:'8999-7766', tarjeta:'PG-0005', puntos:90,  compras:6, saldo:0, alta:'2026-09-18' }
 ];
 
 /* ---------- PEDIDOS (Tienda en Línea + Tarjeta Fidelidad) ---------- */
@@ -232,10 +268,24 @@ let CUPONES = [
 
 /* ---------- USUARIOS ---------- */
 let USUARIOS = [
-  { id:'U1', nombre:'Administrador', usuario:'admin', rol:'Administrador', activo:true },
-  { id:'U2', nombre:'Cajera Turno AM', usuario:'caja1', rol:'Ventas', activo:true },
-  { id:'U3', nombre:'Bodeguero', usuario:'bodega', rol:'Inventario', activo:true }
+  { id:'U1', nombre:'Administrador', usuario:'admin', clave:'1234', rol:'Administrador', activo:true },
+  { id:'U2', nombre:'Cajera Turno AM', usuario:'caja1', clave:'caja1', rol:'Ventas', activo:true },
+  { id:'U3', nombre:'Bodeguero', usuario:'bodega', clave:'bodega', rol:'Inventario', activo:true }
 ];
+(function loadUsuarios(){ try{ const s=localStorage.getItem('pg_usuarios'); if(s){ const arr=JSON.parse(s); if(Array.isArray(arr)&&arr.length) USUARIOS=arr; } }catch(e){} })();
+function saveUsuarios(){ try{ localStorage.setItem('pg_usuarios',JSON.stringify(USUARIOS)); }catch(e){} }
+
+/* ---------- SALIDAS / GASTOS (Finanzas) ---------- */
+const CATEGORIAS_SALIDA=['Alimentación','Alquiler','Compras de Productos y suministros','Gastos administrativos','Gastos de Ventas','Gastos Financieros','Equipamientos','Empleados','Impuestos','Mantenimiento y Reparaciones','Marketing y Publicidad','Transporte y logísticas','Otros'];
+const CAT_ICON={'Alimentación':'fa-utensils','Alquiler':'fa-house','Compras de Productos y suministros':'fa-box','Gastos administrativos':'fa-briefcase','Gastos de Ventas':'fa-cart-shopping','Gastos Financieros':'fa-percent','Equipamientos':'fa-screwdriver-wrench','Empleados':'fa-users','Impuestos':'fa-landmark','Mantenimiento y Reparaciones':'fa-wrench','Marketing y Publicidad':'fa-bullhorn','Transporte y logísticas':'fa-truck','Otros':'fa-ellipsis'};
+let SALIDAS=[
+  { id:'S1', nombre:'Alquiler de local', monto:8000, categoria:'Alquiler', proveedor:'Inmobiliaria León', estado:'pendiente', vence:'2026-09-30', obs:'Mensualidad septiembre', repetir:true },
+  { id:'S2', nombre:'Compra de empaques', monto:2450, categoria:'Compras de Productos y suministros', proveedor:'Empaques del Norte', estado:'pendiente', vence:'2026-09-25', obs:'', repetir:false },
+  { id:'S3', nombre:'Pago de energía eléctrica', monto:1830, categoria:'Gastos administrativos', proveedor:'DISNORTE', estado:'pagado', vence:'2026-09-10', obs:'Recibo agosto', repetir:true }
+];
+(function loadSalidas(){ try{ const s=localStorage.getItem('pg_salidas'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) SALIDAS=a; } }catch(e){} })();
+function saveSalidas(){ try{ localStorage.setItem('pg_salidas',JSON.stringify(SALIDAS)); }catch(e){} }
+let SAL_TAB='pendiente';
 
 /* ---------- CARRITO POS ---------- */
 let CART = [];
@@ -299,11 +349,18 @@ function go(id){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function doLogin(){
+  const usr=(document.getElementById('logUser').value||'').trim();
+  const pas=(document.getElementById('logPass').value||'');
+  const u=USUARIOS.find(x=>x.usuario.toLowerCase()===usr.toLowerCase());
+  if(!u || (u.clave||'')!==pas){ toast('Usuario o contraseña incorrectos'); return; }
+  if(!u.activo){ toast('El usuario está desactivado'); return; }
+  window.USUARIO_ACTUAL=u;
   document.getElementById('loginScreen').style.display='none';
   const app=document.getElementById('app'); app.classList.remove('hidden'); app.classList.add('flex');
   buildMenu();
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString('es-NI',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   go('inicio');
+  setTimeout(()=>{ try{ const n=(typeof clientesProximosDecima==='function'&&PROMO_ALERTA_ON)?clientesProximosDecima().length:0; if(n>0) toast('\uD83D\uDD14 '+n+' cliente(s) pr\u00f3ximo(s) a su 10.\u00aa compra'); }catch(e){} },900);
 }
 function doLogout(){ if(!confirm('¿Desea salir del panel administrativo?')) return; document.getElementById('app').classList.add('hidden'); document.getElementById('loginScreen').style.display='flex'; }
 function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('overlay').classList.toggle('hidden'); }
@@ -333,6 +390,7 @@ RENDER.inicio = function(){
       <td class="px-3 py-2 text-center whitespace-nowrap"><button onclick="reciboPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2 mr-1"><i class="fa-solid fa-receipt"></i></button><button onclick="entregarPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-green text-white hover:bg-pg-green2"><i class="fa-solid fa-check"></i></button></td>
     </tr>`).join('');
   document.getElementById('view-inicio').innerHTML=`
+  ${bannerAlertaDecima()}
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
     <div class="kpi-bar bg-white rounded-2xl shadow-soft overflow-hidden">
       <div class="p-5 bg-gradient-to-br from-pg-green to-pg-green2 text-white">
@@ -861,7 +919,7 @@ RENDER.clientes = function(){
     <div class="bg-white rounded-xl shadow-soft px-4 py-3"><span class="text-[11px] text-pg-muted">Puntos acumulados</span><br><b class="text-lg text-pg-green">${CLIENTES.reduce((s,c)=>s+c.puntos,0)}</b></div>
     <div class="bg-white rounded-xl shadow-soft px-4 py-3"><span class="text-[11px] text-pg-muted">Saldo por cobrar</span><br><b class="text-lg text-red-600">${money(cxcTotal())}</b></div>
   </div>
-  <div class="flex justify-end mb-3"><button onclick="nuevoCliente()" class="py-2 px-4 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold"><i class="fa-solid fa-user-plus mr-1"></i> Nuevo cliente</button></div>
+  <div class="flex flex-wrap justify-end gap-2 mb-3"><button onclick="abrirResumenClientes()" class="py-2 px-4 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-file-invoice mr-1"></i> Resumen de clientes por período</button><button onclick="nuevoCliente()" class="py-2 px-4 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold"><i class="fa-solid fa-user-plus mr-1"></i> Nuevo cliente</button></div>
   <div class="bg-white rounded-2xl shadow-soft"><div class="px-5 py-4 border-b border-gray-100"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-users text-pg-gold mr-2"></i>Clientes y Tarjeta de Fidelidad</h3></div>
     <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-pg-cream text-pg-muted text-[11px] uppercase"><tr><th class="px-3 py-2 text-left">Cliente</th><th class="px-3 py-2 text-left">Teléfono</th><th class="px-3 py-2 text-left">Tarjeta</th><th class="px-3 py-2 text-center">Compras</th><th class="px-3 py-2 text-center">Puntos</th><th class="px-3 py-2 text-right">Saldo</th><th class="px-3 py-2 text-center">Acciones</th></tr></thead><tbody>${rows}</tbody></table></div>
   </div>`;
@@ -874,8 +932,134 @@ function nuevoCliente(){
     </div>
     <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarCliente()" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
 }
-function guardarCliente(){ const nom=document.getElementById('cNom').value.trim(); if(!nom){toast('Ingrese el nombre');return;} const n=CLIENTES.length+1; CLIENTES.push({id:'C'+n,nombre:nom,tel:document.getElementById('cTel').value.trim()||'—',tarjeta:'PG-'+String(n).padStart(4,'0'),puntos:0,compras:0,saldo:0}); closeModal(); refrescar(); toast('Cliente registrado con tarjeta de fidelidad'); }
+function guardarCliente(){ const nom=document.getElementById('cNom').value.trim(); if(!nom){toast('Ingrese el nombre');return;} const n=CLIENTES.length+1; CLIENTES.push({id:'C'+n,nombre:nom,tel:document.getElementById('cTel').value.trim()||'—',tarjeta:'PG-'+String(n).padStart(4,'0'),puntos:0,compras:0,saldo:0,alta:new Date().toISOString().slice(0,10)}); closeModal(); refrescar(); toast('Cliente registrado con tarjeta de fidelidad'); }
 function canjearPuntos(id){ const c=CLIENTES.find(x=>x.id===id); if(!c)return; if(c.puntos<50){toast('Requiere al menos 50 puntos');return;} c.puntos-=50; refrescar(); toast('Canje realizado: C$50 de descuento (50 pts)'); }
+
+/* ============================================================
+   RESUMEN DE CLIENTES POR PERÍODO (corte por fecha de alta)
+   ============================================================ */
+function abrirResumenClientes(){
+  const d0=_primerDiaMes(0), d1=_ultimoDiaMes(0);
+  openModal(`
+  <div class="p-5">
+    <h3 class="text-lg font-bold text-pg-green mb-1"><i class="fa-solid fa-file-invoice text-pg-gold mr-2"></i>Resumen de clientes por período</h3>
+    <p class="text-[12px] text-pg-muted mb-4">El corte se aplica a la <b>fecha de registro</b> del cliente. Se lista además el padrón completo. Listo para imprimir o guardar como PDF.</p>
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button type="button" onclick="resCliPreset('mes')" class="text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold hover:bg-pg-leaf/20">Este mes</button>
+      <button type="button" onclick="resCliPreset('mespasado')" class="text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold hover:bg-pg-leaf/20">Mes pasado</button>
+      <button type="button" onclick="resCliPreset('anio')" class="text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold hover:bg-pg-leaf/20">Este año</button>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold">Desde</label><input id="rcDesde" type="date" value="${d0}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <div><label class="text-xs font-semibold">Hasta</label><input id="rcHasta" type="date" value="${d1}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+    </div>
+    <div class="flex gap-2 pt-5">
+      <button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button>
+      <button onclick="generarResumenClientes()" class="flex-1 py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-print mr-1"></i> Generar resumen</button>
+    </div>
+  </div>`);
+}
+function resCliPreset(t){
+  let d0,d1;
+  if(t==='mes'){ d0=_primerDiaMes(0); d1=_ultimoDiaMes(0); }
+  else if(t==='mespasado'){ d0=_primerDiaMes(-1); d1=_ultimoDiaMes(-1); }
+  else { const y=new Date().getFullYear(); d0=y+'-01-01'; d1=y+'-12-31'; }
+  const a=document.getElementById('rcDesde'), b=document.getElementById('rcHasta');
+  if(a)a.value=d0; if(b)b.value=d1;
+}
+
+function generarResumenClientes(){
+  const desde=document.getElementById('rcDesde').value, hasta=document.getElementById('rcHasta').value;
+  if(!desde||!hasta){ toast('Seleccione ambas fechas'); return; }
+  if(desde>hasta){ toast('La fecha “Desde” no puede ser mayor que “Hasta”'); return; }
+  const enRango=(iso)=> iso && iso>=desde && iso<=hasta;
+
+  const M = n => 'C$ ' + Number(n||0).toLocaleString('es-NI',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const E = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const todos = (typeof CLIENTES!=='undefined')?CLIENTES.slice():[];
+  const nuevos = todos.filter(c=>enRango(c.alta));
+
+  const totalClientes = todos.length;
+  const totalPuntos = todos.reduce((s,c)=>s+(+c.puntos||0),0);
+  const totalCompras = todos.reduce((s,c)=>s+(+c.compras||0),0);
+  const totalSaldo = todos.reduce((s,c)=>s+(+c.saldo||0),0);
+  const conSaldo = todos.filter(c=>c.saldo>0).length;
+
+  const ptsNuevos = nuevos.reduce((s,c)=>s+(+c.puntos||0),0);
+  const saldoNuevos = nuevos.reduce((s,c)=>s+(+c.saldo||0),0);
+
+  const rowCli = c => `<tr><td>${E(c.nombre)}</td><td>${E(c.tel||'\u2014')}</td><td>${E(c.tarjeta||'')}</td><td class="c">${_fmtF(c.alta)}</td><td class="c">${+c.compras||0}</td><td class="c">${+c.puntos||0}</td><td class="r">${M(+c.saldo||0)}</td></tr>`;
+
+  const nuevosRows = nuevos.length
+    ? nuevos.slice().sort((a,b)=>(a.alta||'').localeCompare(b.alta||'')).map(rowCli).join('')
+    : `<tr><td colspan=7 class="muted c">Sin clientes registrados en el período</td></tr>`;
+
+  const todosRows = todos.length
+    ? todos.slice().sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(rowCli).join('')
+    : `<tr><td colspan=7 class="muted c">Sin clientes</td></tr>`;
+
+  const emp = (typeof EMPRESA!=='undefined')?EMPRESA:{nombre:'PG del Campo',lema:'',lugar:'',ruc:'',regimen:''};
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Resumen de Clientes — ${_fmtF(desde)} a ${_fmtF(hasta)}</title>
+<style>
+  *{box-sizing:border-box} body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;color:#222;margin:0;padding:32px;background:#fff}
+  h1{color:#1B382B;font-size:26px;margin:0} .sub{color:#A9781F;font-size:15px;margin:2px 0}
+  .meta{color:#6B7280;font-size:12px;margin-top:2px}
+  .rule{height:3px;background:#8EB057;border:0;margin:14px 0 20px}
+  h2{color:#1B382B;font-size:15px;border-bottom:2px solid #8EB057;padding-bottom:4px;margin:26px 0 10px}
+  .kpis{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .kpi{flex:1;min-width:120px;border:1px solid #e5e7eb;border-radius:10px;padding:12px;background:#F4F4F0}
+  .kpi .lbl{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.3px}
+  .kpi .val{font-size:19px;font-weight:700;margin-top:4px;color:#1B382B}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  th{background:#1B382B;color:#fff;text-align:left;padding:7px 9px;font-size:12px}
+  td{padding:7px 9px;border-bottom:1px solid #eee}
+  .r{text-align:right} .c{text-align:center} .muted{color:#6B7280}
+  tr.tot td{font-weight:700;background:#F4F4F0;border-top:2px solid #8EB057}
+  .foot{margin-top:30px;color:#6B7280;font-size:11px;border-top:1px solid #eee;padding-top:8px}
+  .actions{position:fixed;top:12px;right:12px}
+  .actions button{background:#1B382B;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;margin-left:6px}
+  @media print{.actions{display:none}}
+</style></head><body>
+<div class="actions"><button onclick="window.print()">Imprimir / Guardar PDF</button></div>
+<h1>Resumen de Clientes</h1>
+<div class="sub">${E(emp.nombre)}${emp.lema?(' — '+E(emp.lema)):''}</div>
+<div class="meta">${E(emp.lugar||'')} ${emp.ruc?('· RUC '+E(emp.ruc)):''} ${emp.regimen?('· Régimen '+E(emp.regimen)):''}</div>
+<div class="meta"><b>Período del corte (por fecha de registro):</b> ${_fmtF(desde)} al ${_fmtF(hasta)}</div>
+<hr class="rule">
+<div class="kpis">
+  <div class="kpi"><div class="lbl">Clientes totales</div><div class="val">${totalClientes}</div></div>
+  <div class="kpi"><div class="lbl">Nuevos en el período</div><div class="val" style="color:#4d7a2c">${nuevos.length}</div></div>
+  <div class="kpi"><div class="lbl">Puntos acumulados</div><div class="val">${totalPuntos}</div></div>
+  <div class="kpi"><div class="lbl">Saldo por cobrar</div><div class="val" style="color:#C0392B">${M(totalSaldo)}</div></div>
+</div>
+
+<h2>Panorama general</h2>
+<ul>
+  <li><b>Padrón:</b> ${totalClientes} clientes con tarjeta de fidelidad, ${totalCompras} compras acumuladas y ${totalPuntos} puntos.</li>
+  <li><b>Altas del período:</b> ${nuevos.length} nuevos clientes (${ptsNuevos} puntos, saldo ${M(saldoNuevos)}).</li>
+  <li><b>Cartera por cobrar:</b> ${conSaldo} clientes con saldo pendiente por un total de ${M(totalSaldo)}.</li>
+</ul>
+
+<h2>Clientes registrados en el período</h2>
+<table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tarjeta</th><th class="c">Alta</th><th class="c">Compras</th><th class="c">Puntos</th><th class="r">Saldo</th></tr></thead>
+<tbody>${nuevosRows}</tbody></table>
+
+<h2>Padrón completo de clientes</h2>
+<table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tarjeta</th><th class="c">Alta</th><th class="c">Compras</th><th class="c">Puntos</th><th class="r">Saldo</th></tr></thead>
+<tbody>${todosRows}
+<tr class="tot"><td colspan=4>Totales</td><td class="c">${totalCompras}</td><td class="c">${totalPuntos}</td><td class="r">${M(totalSaldo)}</td></tr></tbody></table>
+
+<div class="foot">Documento generado desde el Panel-Admin ${E(emp.marca||emp.nombre)}. Cifras en córdobas nicaragüenses (C$).</div>
+</body></html>`;
+
+  const w=window.open('','_blank');
+  if(!w){ toast('Habilite las ventanas emergentes para ver el resumen'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  closeModal();
+  toast('Resumen de clientes del '+_fmtF(desde)+' al '+_fmtF(hasta)+' generado');
+}
 
 
 /* === app2_7.js === */
@@ -943,11 +1127,17 @@ function reciboVenta(r){ const v=VENTAS.find(x=>x.recibo===r); if(!v)return; abr
    ============================================================ */
 let _barFin;
 RENDER.finanzas = function(){
-  const ingresos=totalVentasHoy(), costos=VENTAS.reduce((s,v)=>s+v.total*0.6,0), margen=ingresos-costos;
+  const ingresos=totalVentasHoy();
+  const gastosPagados=SALIDAS.filter(s=>s.estado==='pagado').reduce((a,s)=>a+(+s.monto||0),0);
+  const costosBase=VENTAS.reduce((s,v)=>s+v.total*0.6,0), costos=costosBase+gastosPagados, margen=ingresos-costos;
   document.getElementById('view-finanzas').innerHTML=`
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <h2 class="text-lg font-bold text-pg-green"><i class="fa-solid fa-chart-pie text-pg-gold mr-2"></i>Finanzas</h2>
+    <button onclick="abrirResumenPeriodo()" class="py-2 px-4 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold shadow-soft"><i class="fa-solid fa-file-invoice-dollar mr-1"></i> Resumen ejecutivo por período</button>
+  </div>
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
     <div class="bg-gradient-to-br from-pg-green to-pg-green2 text-white rounded-2xl shadow-soft p-5"><span class="text-xs opacity-80">Ingresos del día</span><p class="text-2xl font-bold mt-1">${money(ingresos)}</p></div>
-    <div class="bg-white rounded-2xl shadow-soft p-5"><span class="text-xs text-pg-muted">Costos estimados</span><p class="text-2xl font-bold mt-1 text-pg-gold2">${money(costos)}</p></div>
+    <div class="bg-white rounded-2xl shadow-soft p-5"><span class="text-xs text-pg-muted">Costos estimados</span><p class="text-2xl font-bold mt-1 text-pg-gold2">${money(costos)}</p><span class="text-[10px] text-pg-muted">Incl. gastos pagados ${money(gastosPagados)}</span></div>
     <div class="bg-white rounded-2xl shadow-soft p-5"><span class="text-xs text-pg-muted">Margen operacional</span><p class="text-2xl font-bold mt-1 text-pg-green">${money(margen)}</p></div>
     <div class="bg-white rounded-2xl shadow-soft p-5"><span class="text-xs text-pg-muted">Cuentas por cobrar</span><p class="text-2xl font-bold mt-1 text-red-600">${money(cxcTotal())}</p></div>
   </div>
@@ -960,9 +1150,261 @@ RENDER.finanzas = function(){
         <div class="flex justify-center pt-2"><div id="qrFin" class="p-2 bg-white rounded-lg border border-gray-200"></div></div>
       </div>
     </div>
-  </div>`;
+  </div>
+  <div id="salidasBox" class="mt-5"></div>`;
   setTimeout(()=>{ const el=document.getElementById('barFin'); if(el&&window.Chart){ const byMet={}; VENTAS.forEach(v=>byMet[v.metodo]=(byMet[v.metodo]||0)+v.total); if(_barFin)_barFin.destroy(); _barFin=new Chart(el,{type:'bar',data:{labels:Object.keys(byMet),datasets:[{data:Object.values(byMet),backgroundColor:['#1b382b','#8eb057','#c8963e','#a9781f','#28523f'],borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'C$'+v}}}}}); } makeQR(document.getElementById('qrFin'),payString('',''),120); },60);
+  renderSalidas();
 };
+
+
+
+/* ============================================================
+   RESUMEN EJECUTIVO DE FINANZAS POR PERÍODO (corte de fechas)
+   ============================================================ */
+function _isoHoy(){ return new Date().toISOString().slice(0,10); }
+function _primerDiaMes(off){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+(off||0)); return d.toISOString().slice(0,10); }
+function _ultimoDiaMes(off){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+(off||0)+1); d.setDate(0); return d.toISOString().slice(0,10); }
+function _fmtF(iso){ if(!iso) return '\u2014'; const p=String(iso).split('-'); return (p.length===3)?(p[2]+'/'+p[1]+'/'+p[0]):iso; }
+
+function abrirResumenPeriodo(){
+  const d0=_primerDiaMes(0), d1=_ultimoDiaMes(0);
+  openModal(`
+  <div class="p-5">
+    <h3 class="text-lg font-bold text-pg-green mb-1"><i class="fa-solid fa-file-invoice-dollar text-pg-gold mr-2"></i>Resumen ejecutivo por período</h3>
+    <p class="text-[12px] text-pg-muted mb-4">Elija el corte de fechas. El resumen se abre listo para imprimir o guardar como PDF.</p>
+    <div class="flex flex-wrap gap-2 mb-4">
+      <button type="button" onclick="resumenPreset('mes')" class="text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold hover:bg-pg-leaf/20">Este mes</button>
+      <button type="button" onclick="resumenPreset('mespasado')" class="text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold hover:bg-pg-leaf/20">Mes pasado</button>
+      <button type="button" onclick="resumenPreset('anio')" class="text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold hover:bg-pg-leaf/20">Este año</button>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold">Desde</label><input id="rpDesde" type="date" value="${d0}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <div><label class="text-xs font-semibold">Hasta</label><input id="rpHasta" type="date" value="${d1}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+    </div>
+    <div class="flex gap-2 pt-5">
+      <button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button>
+      <button onclick="generarResumenPeriodo()" class="flex-1 py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-print mr-1"></i> Generar resumen</button>
+    </div>
+  </div>`);
+}
+function resumenPreset(t){
+  let d0,d1;
+  if(t==='mes'){ d0=_primerDiaMes(0); d1=_ultimoDiaMes(0); }
+  else if(t==='mespasado'){ d0=_primerDiaMes(-1); d1=_ultimoDiaMes(-1); }
+  else { const y=new Date().getFullYear(); d0=y+'-01-01'; d1=y+'-12-31'; }
+  const a=document.getElementById('rpDesde'), b=document.getElementById('rpHasta');
+  if(a)a.value=d0; if(b)b.value=d1;
+}
+
+function generarResumenPeriodo(){
+  const desde=document.getElementById('rpDesde').value, hasta=document.getElementById('rpHasta').value;
+  if(!desde||!hasta){ toast('Seleccione ambas fechas'); return; }
+  if(desde>hasta){ toast('La fecha “Desde” no puede ser mayor que “Hasta”'); return; }
+  const hoy=_isoHoy();
+  const enRango=(iso)=> iso && iso>=desde && iso<=hasta;
+
+  // Ventas: registradas en la jornada actual; se incluyen si hoy cae dentro del corte
+  const ventasEnRango = enRango(hoy) ? VENTAS.slice() : [];
+  const ingresos = ventasEnRango.reduce((s,v)=>s+(+v.total||0),0);
+  const byMet={}; ventasEnRango.forEach(v=>byMet[v.metodo]=(byMet[v.metodo]||0)+(+v.total||0));
+
+  // Gastos por fecha de vencimiento dentro del corte
+  const gastos = SALIDAS.filter(s=>enRango(s.vence));
+  const gastosPag = gastos.filter(s=>s.estado==='pagado');
+  const gastosPend = gastos.filter(s=>s.estado!=='pagado');
+  const totPag = gastosPag.reduce((a,s)=>a+(+s.monto||0),0);
+  const totPend = gastosPend.reduce((a,s)=>a+(+s.monto||0),0);
+
+  const costosBase = ingresos*0.6;
+  const costos = costosBase + totPag;
+  const margen = ingresos - costos;
+  const cxc = cxcTotal();
+  const ticket = ventasEnRango.length ? ingresos/ventasEnRango.length : 0;
+
+  const M = n => 'C$ ' + Number(n||0).toLocaleString('es-NI',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const PCT = (p,t)=> t? (p/t*100).toFixed(1)+'%':'0.0%';
+  const E = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const metRows = Object.keys(byMet).sort((a,b)=>byMet[b]-byMet[a]).map(k=>
+    `<tr><td>${E(k)}</td><td class="r">${M(byMet[k])}</td><td class="r">${PCT(byMet[k],ingresos)}</td></tr>`).join('')
+    || `<tr><td colspan=3 class="muted c">Sin ventas registradas en el corte</td></tr>`;
+
+  const gastoRows = gastos.slice().sort((a,b)=>(a.vence||'').localeCompare(b.vence||'')).map(s=>
+    `<tr><td>${E(s.nombre||'(sin nombre)')}</td><td>${E(s.categoria||'Otros')}</td><td class="c">${_fmtF(s.vence)}</td><td class="r">${M(+s.monto||0)}</td><td class="c">${s.estado==='pagado'?'<span class=\'ok\'>Pagado</span>':'<span class=\'warn\'>Sin pagar</span>'}</td></tr>`).join('')
+    || `<tr><td colspan=5 class="muted c">Sin gastos con vencimiento en el corte</td></tr>`;
+
+  const cxcRows = (typeof CLIENTES!=='undefined'? CLIENTES.filter(c=>c.saldo>0):[]).map(c=>
+    `<tr><td>${E(c.nombre)}</td><td>${E(c.tel||'')}</td><td class="r">${M(c.saldo)}</td></tr>`).join('')
+    || `<tr><td colspan=3 class="muted c">Sin saldos pendientes</td></tr>`;
+
+  const margenColor = margen<0 ? '#C0392B' : '#1B382B';
+  const emp = (typeof EMPRESA!=='undefined')?EMPRESA:{nombre:'PG del Campo',lema:'',lugar:'',ruc:'',regimen:''};
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Resumen Ejecutivo de Finanzas — ${_fmtF(desde)} a ${_fmtF(hasta)}</title>
+<style>
+  *{box-sizing:border-box} body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;color:#222;margin:0;padding:32px;background:#fff}
+  h1{color:#1B382B;font-size:26px;margin:0} .sub{color:#A9781F;font-size:15px;margin:2px 0}
+  .meta{color:#6B7280;font-size:12px;margin-top:2px}
+  .rule{height:3px;background:#8EB057;border:0;margin:14px 0 20px}
+  h2{color:#1B382B;font-size:15px;border-bottom:2px solid #8EB057;padding-bottom:4px;margin:26px 0 10px}
+  .kpis{display:flex;gap:12px;margin-bottom:6px}
+  .kpi{flex:1;border:1px solid #e5e7eb;border-radius:10px;padding:12px;background:#F4F4F0}
+  .kpi .lbl{font-size:11px;color:#6B7280;text-transform:uppercase;letter-spacing:.3px}
+  .kpi .val{font-size:19px;font-weight:700;margin-top:4px}
+  .note{font-size:11px;color:#6B7280;margin-top:6px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  th{background:#1B382B;color:#fff;text-align:left;padding:7px 9px;font-size:12px}
+  td{padding:7px 9px;border-bottom:1px solid #eee}
+  .r{text-align:right} .c{text-align:center} .muted{color:#6B7280}
+  tr.tot td{font-weight:700;background:#F4F4F0;border-top:2px solid #8EB057}
+  .ok{color:#4d7a2c;font-weight:600} .warn{color:#A9781F;font-weight:600}
+  ul{margin:6px 0;padding-left:18px} li{margin:4px 0;font-size:13px}
+  .foot{margin-top:30px;color:#6B7280;font-size:11px;border-top:1px solid #eee;padding-top:8px}
+  .actions{position:fixed;top:12px;right:12px}
+  .actions button{background:#1B382B;color:#fff;border:0;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;margin-left:6px}
+  @media print{.actions{display:none}}
+</style></head><body>
+<div class="actions"><button onclick="window.print()">Imprimir / Guardar PDF</button></div>
+<h1>Resumen Ejecutivo de Finanzas</h1>
+<div class="sub">${E(emp.nombre)}${emp.lema?(' — '+E(emp.lema)):''}</div>
+<div class="meta">${E(emp.lugar||'')} ${emp.ruc?('· RUC '+E(emp.ruc)):''} ${emp.regimen?('· Régimen '+E(emp.regimen)):''}</div>
+<div class="meta"><b>Período del corte:</b> ${_fmtF(desde)} al ${_fmtF(hasta)}</div>
+<hr class="rule">
+<div class="kpis">
+  <div class="kpi"><div class="lbl">Ingresos</div><div class="val" style="color:#1B382B">${M(ingresos)}</div></div>
+  <div class="kpi"><div class="lbl">Costos estimados</div><div class="val" style="color:#A9781F">${M(costos)}</div></div>
+  <div class="kpi"><div class="lbl">Margen operacional</div><div class="val" style="color:${margenColor}">${M(margen)}</div></div>
+  <div class="kpi"><div class="lbl">Cuentas por cobrar</div><div class="val" style="color:#C0392B">${M(cxc)}</div></div>
+</div>
+<div class="note">Costos = 60% del valor de ventas (${M(costosBase)}) + gastos pagados del corte (${M(totPag)}). Cuentas por cobrar es el saldo vigente a la fecha.</div>
+
+<h2>Panorama general</h2>
+<ul>
+  <li><b>Ventas del corte:</b> ${ventasEnRango.length} operaciones por ${M(ingresos)} (ticket promedio ${M(ticket)}).</li>
+  <li><b>Gastos pagados en el corte:</b> ${M(totPag)} · <b>pendientes por pagar:</b> ${M(totPend)}.</li>
+  <li><b>Liquidez pendiente de cobro:</b> ${M(cxc)}.</li>
+</ul>
+
+<h2>Ingresos por método de pago</h2>
+<table><thead><tr><th>Método</th><th class="r">Monto</th><th class="r">Participación</th></tr></thead>
+<tbody>${metRows}<tr class="tot"><td>Total ingresos</td><td class="r">${M(ingresos)}</td><td class="r">100.0%</td></tr></tbody></table>
+
+<h2>Salidas y gastos (por vencimiento en el corte)</h2>
+<table><thead><tr><th>Salida</th><th>Categoría</th><th class="c">Vence</th><th class="r">Monto</th><th class="c">Estado</th></tr></thead>
+<tbody>${gastoRows}
+<tr class="tot"><td colspan=3>Total sin pagar</td><td class="r">${M(totPend)}</td><td></td></tr>
+<tr class="tot"><td colspan=3>Total pagado</td><td class="r">${M(totPag)}</td><td></td></tr></tbody></table>
+
+<h2>Cuentas por cobrar</h2>
+<table><thead><tr><th>Cliente</th><th>Teléfono</th><th class="r">Saldo</th></tr></thead>
+<tbody>${cxcRows}<tr class="tot"><td colspan=2>Total por cobrar</td><td class="r">${M(cxc)}</td></tr></tbody></table>
+
+<div class="foot">Documento generado desde el Panel-Admin ${E(emp.marca||emp.nombre)}. Cifras en córdobas nicaragüenses (C$). ${enRango(hoy)?'':'<b>Nota:</b> el corte no incluye la jornada de ventas actual porque la fecha de hoy queda fuera del rango seleccionado.'}</div>
+</body></html>`;
+
+  const w=window.open('','_blank');
+  if(!w){ toast('Habilite las ventanas emergentes para ver el resumen'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  closeModal();
+  toast('Resumen del '+_fmtF(desde)+' al '+_fmtF(hasta)+' generado');
+}
+
+/* ============================================================
+   SALIDAS / GASTOS — apartado dentro de Finanzas
+   Pestañas: Sin pagar / Pagado · vencimiento · categorías buscables
+   ============================================================ */
+function fmtFechaSal(iso){ if(!iso) return '\u2014'; const p=String(iso).split('-'); return (p.length===3)?(p[2]+'/'+p[1]+'/'+p[0]):iso; }
+function salTotales(){ let pend=0,pag=0,np=0,ng=0; SALIDAS.forEach(s=>{ const m=+s.monto||0; if(s.estado==='pagado'){pag+=m;ng++;} else {pend+=m;np++;} }); return {pend,pag,np,ng}; }
+function salTab(t){ SAL_TAB=t; renderSalidas(); }
+function renderSalidas(){
+  const box=document.getElementById('salidasBox'); if(!box) return;
+  const T=salTotales();
+  const hoy=new Date().toISOString().slice(0,10);
+  const lista=SALIDAS.filter(s=>(SAL_TAB==='pagado'?s.estado==='pagado':s.estado==='pendiente'));
+  const rows=lista.map(s=>{ const idx=SALIDAS.indexOf(s); const venc=(s.estado==='pendiente'&&s.vence&&s.vence<hoy); const ico=CAT_ICON[s.categoria]||'fa-tag'; return `
+    <tr class="border-b border-gray-100 hover:bg-pg-cream/60">
+      <td class="px-3 py-2"><b class="text-pg-ink">${esc(s.nombre||'(sin nombre)')}</b>${s.repetir?'<span class="ml-1 text-[10px] text-pg-muted"><i class="fa-solid fa-repeat"></i></span>':''}${s.obs?`<br><span class="text-[11px] text-pg-muted">${esc(s.obs)}</span>`:''}</td>
+      <td class="px-3 py-2"><span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-pg-leaf/15 text-pg-green"><i class="fa-solid ${ico}"></i> ${esc(s.categoria||'Otros')}</span></td>
+      <td class="px-3 py-2 text-pg-muted hidden md:table-cell">${esc(s.proveedor||'\u2014')}</td>
+      <td class="px-3 py-2 text-center ${venc?'text-red-600 font-semibold':''}"><i class="fa-solid fa-calendar-day mr-1 text-pg-muted"></i>${fmtFechaSal(s.vence)}${venc?' <span class="text-[10px]">(vencido)</span>':''}</td>
+      <td class="px-3 py-2 text-right font-semibold text-pg-gold2">${money(+s.monto||0)}</td>
+      <td class="px-3 py-2 text-center whitespace-nowrap">
+        <button onclick="toggleSalidaPago('${s.id}')" class="text-[11px] px-2 py-1 rounded-md ${s.estado==='pagado'?'bg-amber-100 text-amber-800':'bg-pg-green text-white hover:bg-pg-green2'}">${s.estado==='pagado'?'Marcar sin pagar':'Marcar pagada'}</button>
+        <button onclick="editarSalida(${idx})" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2"><i class="fa-solid fa-pen"></i></button>
+        <button onclick="delSalida('${s.id}')" class="text-[11px] px-2 py-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200"><i class="fa-solid fa-trash"></i></button>
+      </td>
+    </tr>`; }).join('');
+  const tab=(id,lbl,n,tot)=>`<button onclick="salTab('${id}')" class="px-4 py-2 rounded-lg text-sm font-semibold border ${SAL_TAB===id?'bg-pg-green text-white border-pg-green':'bg-white text-pg-green border-gray-200 hover:border-pg-gold'}">${lbl} <span class="text-[11px] opacity-80">(${n} · ${money(tot)})</span></button>`;
+  box.innerHTML=`
+  <div class="bg-white rounded-2xl shadow-soft">
+    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+      <h3 class="font-bold text-pg-green"><i class="fa-solid fa-money-bill-transfer text-pg-gold mr-2"></i>Salidas / Gastos</h3>
+      <button onclick="addSalida()" class="py-2 px-4 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold"><i class="fa-solid fa-plus mr-1"></i> Añadir salida</button>
+    </div>
+    <div class="flex flex-wrap gap-2 px-5 pt-4">${tab('pendiente','Sin pagar',T.np,T.pend)}${tab('pagado','Pagado',T.ng,T.pag)}</div>
+    <div class="overflow-x-auto px-2 pb-2"><table class="w-full text-sm">
+      <thead class="bg-pg-cream text-pg-muted text-[11px] uppercase"><tr><th class="px-3 py-2 text-left">Salida</th><th class="px-3 py-2 text-left">Categoría</th><th class="px-3 py-2 text-left hidden md:table-cell">Proveedor</th><th class="px-3 py-2 text-center">Vencimiento</th><th class="px-3 py-2 text-right">Monto</th><th class="px-3 py-2 text-center">Acción</th></tr></thead>
+      <tbody>${rows||`<tr><td colspan=6 class="text-center py-6 text-pg-muted">Sin salidas ${SAL_TAB==='pagado'?'pagadas':'pendientes'}</td></tr>`}</tbody>
+    </table></div>
+  </div>`;
+}
+
+/* ---- Dropdown de categorías con búsqueda y desplazamiento ---- */
+function salCatOpts(f){ f=(f||'').toLowerCase(); const arr=CATEGORIAS_SALIDA.filter(c=>c.toLowerCase().includes(f)); if(!arr.length) return '<p class="px-3 py-2 text-[12px] text-pg-muted">Sin coincidencias</p>'; return arr.map(c=>`<button type="button" onclick="salCatPick(this.dataset.c)" data-c="${esc(c)}" class="w-full text-left px-3 py-2 text-[13px] hover:bg-pg-cream flex items-center gap-2"><i class="fa-solid ${CAT_ICON[c]||'fa-tag'} text-pg-gold w-4 text-center"></i>${esc(c)}</button>`).join(''); }
+function salCatToggle(){ const d=document.getElementById('salCatDrop'); if(!d)return; d.classList.toggle('hidden'); if(!d.classList.contains('hidden')){ const b=document.getElementById('salCatBuscar'); document.getElementById('salCatLista').innerHTML=salCatOpts(''); if(b){b.value='';setTimeout(()=>b.focus(),30);} } }
+function salCatFiltrar(v){ const l=document.getElementById('salCatLista'); if(l) l.innerHTML=salCatOpts(v); }
+function salCatPick(c){ const sel=document.getElementById('salCatSel'),inp=document.getElementById('salCatInp'); if(sel)sel.value=c; if(inp)inp.value=c; const d=document.getElementById('salCatDrop'); if(d)d.classList.add('hidden'); }
+function salEstadoSet(v){ const h=document.getElementById('salEstado'); if(h)h.value=v; const bp=document.getElementById('salTabPend'),bg=document.getElementById('salTabPag'); const on='flex-1 py-2 text-sm font-semibold bg-pg-green text-white', off='flex-1 py-2 text-sm font-semibold bg-white text-pg-green'; if(bp)bp.className=(v==='pendiente')?on:off; if(bg)bg.className=(v==='pagado')?on:off; }
+
+function addSalida(){ editarSalida(-1); }
+function editarSalida(i){
+  const nuevo=(i<0);
+  const hoy=new Date().toISOString().slice(0,10);
+  const s=nuevo?{nombre:'',monto:'',categoria:'Otros',proveedor:'',estado:'pendiente',vence:hoy,obs:'',repetir:false}:SALIDAS[i];
+  openModal(`<div class="p-0 overflow-hidden">
+    <div class="bg-pg-green text-white px-5 py-4 flex items-center justify-between"><h3 class="font-bold">${nuevo?'Añadir salida':'Modificar salida'}</h3><button onclick="closeModal()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="p-5 space-y-4 text-sm">
+      <input type="hidden" id="salEstado" value="${s.estado}">
+      <div class="flex rounded-lg overflow-hidden border border-gray-200">
+        <button type="button" id="salTabPend" onclick="salEstadoSet('pendiente')" class="flex-1 py-2 text-sm font-semibold ${s.estado==='pendiente'?'bg-pg-green text-white':'bg-white text-pg-green'}">Sin pagar</button>
+        <button type="button" id="salTabPag" onclick="salEstadoSet('pagado')" class="flex-1 py-2 text-sm font-semibold ${s.estado==='pagado'?'bg-pg-green text-white':'bg-white text-pg-green'}">Pagado</button>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="text-xs font-semibold">Valor (C$)</label><input id="salMonto" type="number" min="0" step="0.01" value="${s.monto}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div><label class="text-xs font-semibold">Vencimiento</label><input id="salVence" type="date" value="${s.vence||hoy}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      </div>
+      <div><label class="text-xs font-semibold">Categoría</label>
+        <div class="relative">
+          <input type="hidden" id="salCatSel" value="${esc(s.categoria||'Otros')}">
+          <input id="salCatInp" value="${esc(s.categoria||'Otros')}" readonly onclick="salCatToggle()" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 bg-white cursor-pointer focus:outline-none focus:border-pg-gold">
+          <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 mt-0.5 -translate-y-1/2 text-pg-muted text-xs pointer-events-none"></i>
+          <div id="salCatDrop" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white rounded-lg border border-gray-200 shadow-lg">
+            <div class="p-2 border-b border-gray-100"><input id="salCatBuscar" oninput="salCatFiltrar(this.value)" placeholder="Buscar categoría..." class="w-full px-3 py-1.5 rounded-md border border-gray-200 text-[13px] focus:outline-none focus:border-pg-gold"></div>
+            <div id="salCatLista" class="max-h-48 overflow-y-auto"></div>
+          </div>
+        </div>
+      </div>
+      <div><label class="text-xs font-semibold">Nombre de la salida</label><input id="salNom" value="${esc(s.nombre)}" placeholder="Ej. Alquiler de local" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <div><label class="text-xs font-semibold">Proveedor</label><input id="salProv" value="${esc(s.proveedor)}" placeholder="Nombre del proveedor" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <div><label class="text-xs font-semibold">Observaciones</label><input id="salObs" value="${esc(s.obs)}" placeholder="Notas (opcional)" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <label class="flex items-center justify-between"><span class="text-xs font-semibold"><i class="fa-solid fa-repeat text-pg-gold mr-1"></i>Repetir salida</span><input id="salRep" type="checkbox" ${s.repetir?'checked':''} class="w-5 h-5 accent-pg-green"></label>
+      <div class="flex gap-2 pt-1"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarSalida(${i})" class="flex-1 py-2.5 rounded-lg bg-pg-leaf hover:opacity-90 text-white text-sm font-semibold">${nuevo?'Añadir salida':'Guardar cambios'}</button></div>
+    </div></div>`);
+}
+function guardarSalida(i){
+  const nuevo=(i<0);
+  const monto=+document.getElementById('salMonto').value||0;
+  const nom=document.getElementById('salNom').value.trim();
+  const cat=document.getElementById('salCatSel').value||'Otros';
+  if(!nom){ toast('Indique el nombre de la salida'); return; }
+  if(monto<=0){ toast('Indique un valor mayor a cero'); return; }
+  const data={ nombre:nom, monto:monto, categoria:cat, proveedor:document.getElementById('salProv').value.trim(), estado:document.getElementById('salEstado').value||'pendiente', vence:document.getElementById('salVence').value||'', obs:document.getElementById('salObs').value.trim(), repetir:document.getElementById('salRep').checked };
+  if(nuevo){ data.id='S'+(Date.now()%1000000); SALIDAS.unshift(data); toast('Salida añadida'); }
+  else { Object.assign(SALIDAS[i],data); toast('Salida actualizada'); }
+  SAL_TAB=data.estado; saveSalidas(); closeModal(); refrescar();
+}
+function toggleSalidaPago(id){ const s=SALIDAS.find(x=>x.id===id); if(!s)return; s.estado=(s.estado==='pagado')?'pendiente':'pagado'; SAL_TAB=s.estado; saveSalidas(); refrescar(); toast(s.estado==='pagado'?'Salida marcada como pagada':'Salida marcada sin pagar'); }
+function delSalida(id){ const s=SALIDAS.find(x=>x.id===id); if(!s)return; if(!confirm('¿Eliminar la salida "'+(s.nombre||'')+'"?'))return; SALIDAS=SALIDAS.filter(x=>x.id!==id); saveSalidas(); refrescar(); toast('Salida eliminada'); }
 
 /* ============================================================
    CUENTAS POR COBRAR
@@ -1102,28 +1544,61 @@ RENDER.usuarios = function(){
   const rows=USUARIOS.map((u,i)=>`
     <tr class="border-b border-gray-100 hover:bg-pg-cream/60">
       <td class="px-3 py-2"><b>${esc(u.nombre)}</b></td><td class="px-3 py-2 font-mono text-[12px]">${esc(u.usuario)}</td>
+      <td class="px-3 py-2 font-mono text-[12px] text-pg-muted">${'\u2022'.repeat(Math.min(8,(u.clave||'').length||4))}</td>
       <td class="px-3 py-2"><span class="text-[11px] px-2 py-0.5 rounded-full bg-pg-gold/20 text-pg-gold2">${u.rol}</span></td>
       <td class="px-3 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${u.activo?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}">${u.activo?'Activo':'Inactivo'}</span></td>
-      <td class="px-3 py-2 text-center whitespace-nowrap"><button onclick="toggleUsuario(${i})" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2">${u.activo?'Desactivar':'Activar'}</button> ${u.usuario!=='admin'?`<button onclick="delUsuario(${i})" class="text-[11px] px-2 py-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200"><i class="fa-solid fa-trash"></i></button>`:''}</td>
+      <td class="px-3 py-2 text-center whitespace-nowrap"><button onclick="editarUsuario(${i})" class="text-[11px] px-2 py-1 rounded-md bg-pg-green text-white hover:bg-pg-green2"><i class="fa-solid fa-pen mr-1"></i>Editar</button> <button onclick="toggleUsuario(${i})" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2">${u.activo?'Desactivar':'Activar'}</button> ${u.usuario!=='admin'?`<button onclick="delUsuario(${i})" class="text-[11px] px-2 py-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200"><i class="fa-solid fa-trash"></i></button>`:''}</td>
     </tr>`).join('');
   document.getElementById('view-usuarios').innerHTML=`
   <div class="flex justify-end mb-3"><button onclick="nuevoUsuario()" class="py-2 px-4 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold"><i class="fa-solid fa-user-plus mr-1"></i> Nuevo usuario</button></div>
   <div class="bg-white rounded-2xl shadow-soft"><div class="px-5 py-4 border-b border-gray-100"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-user-gear text-pg-gold mr-2"></i>Usuarios y Roles</h3></div>
-    <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-pg-cream text-pg-muted text-[11px] uppercase"><tr><th class="px-3 py-2 text-left">Nombre</th><th class="px-3 py-2 text-left">Usuario</th><th class="px-3 py-2 text-left">Rol</th><th class="px-3 py-2 text-center">Estado</th><th class="px-3 py-2 text-center">Acción</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-pg-cream text-pg-muted text-[11px] uppercase"><tr><th class="px-3 py-2 text-left">Nombre</th><th class="px-3 py-2 text-left">Usuario</th><th class="px-3 py-2 text-left">Contraseña</th><th class="px-3 py-2 text-left">Rol</th><th class="px-3 py-2 text-center">Estado</th><th class="px-3 py-2 text-center">Acción</th></tr></thead><tbody>${rows}</tbody></table></div>
   </div>`;
 };
-function toggleUsuario(i){ USUARIOS[i].activo=!USUARIOS[i].activo; refrescar(); }
-function delUsuario(i){ if(!confirm('¿Eliminar usuario '+USUARIOS[i].usuario+'?'))return; USUARIOS.splice(i,1); refrescar(); toast('Usuario eliminado'); }
-function nuevoUsuario(){
-  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green">Nuevo usuario</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
+function toggleUsuario(i){ USUARIOS[i].activo=!USUARIOS[i].activo; saveUsuarios(); refrescar(); }
+function delUsuario(i){ if(!confirm('¿Eliminar usuario '+USUARIOS[i].usuario+'?'))return; USUARIOS.splice(i,1); saveUsuarios(); refrescar(); toast('Usuario eliminado'); }
+function nuevoUsuario(){ editarUsuario(-1); }
+function togglePass(btn){ const p=document.getElementById('uPas'); if(!p)return; p.type=(p.type==='password')?'text':'password'; btn.innerHTML=(p.type==='password')?'<i class="fa-solid fa-eye"></i>':'<i class="fa-solid fa-eye-slash"></i>'; }
+function editarUsuario(i){
+  const nuevo=(i<0);
+  const u=nuevo?{nombre:'',usuario:'',clave:'',rol:'Administrador',activo:true}:USUARIOS[i];
+  const roles=['Administrador','Ventas','Inventario','Finanzas'];
+  const opts=roles.map(r=>`<option ${u.rol===r?'selected':''}>${r}</option>`).join('');
+  const bloqUsr=(!nuevo&&u.usuario==='admin');
+  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green">${nuevo?'Nuevo usuario':'Modificar usuario'}</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="space-y-3 text-sm">
-      <div><label class="text-xs font-semibold">Nombre</label><input id="uNom" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
-      <div><label class="text-xs font-semibold">Usuario</label><input id="uUsr" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
-      <div><label class="text-xs font-semibold">Rol</label><select id="uRol" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200"><option>Administrador</option><option>Ventas</option><option>Inventario</option><option>Finanzas</option></select></div>
+      <div><label class="text-xs font-semibold">Nombre</label><input id="uNom" value="${esc(u.nombre)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <div><label class="text-xs font-semibold">Usuario</label><input id="uUsr" value="${esc(u.usuario)}" ${bloqUsr?'readonly':''} class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold ${bloqUsr?'bg-gray-100 text-pg-muted':''}">${bloqUsr?'<p class="text-[10px] text-pg-muted mt-1">El usuario \'admin\' no puede renombrarse.</p>':''}</div>
+      <div><label class="text-xs font-semibold">Contraseña</label>
+        <div class="relative"><input id="uPas" type="password" value="${esc(u.clave||'')}" placeholder="${nuevo?'Defina una contraseña':'Deje igual o escriba una nueva'}" class="w-full mt-1 px-3 py-2 pr-10 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold">
+        <button type="button" onclick="togglePass(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-pg-muted text-xs"><i class="fa-solid fa-eye"></i></button></div></div>
+      <div><label class="text-xs font-semibold">Rol</label><select id="uRol" ${bloqUsr?'disabled':''} class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200">${opts}</select></div>
     </div>
-    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarUsuario()" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
+    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarUsuario(${i})" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">${nuevo?'Crear usuario':'Guardar cambios'}</button></div></div>`);
 }
-function guardarUsuario(){ const nom=document.getElementById('uNom').value.trim(),usr=document.getElementById('uUsr').value.trim(); if(!nom||!usr){toast('Complete los campos');return;} USUARIOS.push({id:'U'+(USUARIOS.length+1),nombre:nom,usuario:usr,rol:document.getElementById('uRol').value,activo:true}); closeModal(); refrescar(); toast('Usuario creado'); }
+function guardarUsuario(i){
+  const nuevo=(i<0);
+  const nom=document.getElementById('uNom').value.trim();
+  const usr=document.getElementById('uUsr').value.trim();
+  const pas=document.getElementById('uPas').value;
+  const rol=document.getElementById('uRol').value;
+  if(!nom||!usr){ toast('Complete nombre y usuario'); return; }
+  if(nuevo && !pas){ toast('Defina una contraseña'); return; }
+  const dup=USUARIOS.find((x,idx)=>idx!==i && x.usuario.toLowerCase()===usr.toLowerCase());
+  if(dup){ toast('Ya existe un usuario con ese nombre de acceso'); return; }
+  if(nuevo){
+    USUARIOS.push({ id:'U'+(Date.now()%100000), nombre:nom, usuario:usr, clave:pas, rol, activo:true });
+    toast('Usuario creado');
+  } else {
+    const u=USUARIOS[i];
+    if(u.usuario!=='admin') u.usuario=usr;
+    u.nombre=nom; if(u.usuario!=='admin') u.rol=rol;
+    if(pas!=='') u.clave=pas;
+    if(window.USUARIO_ACTUAL&&window.USUARIO_ACTUAL.id===u.id) window.USUARIO_ACTUAL=u;
+    toast('Usuario actualizado');
+  }
+  saveUsuarios(); closeModal(); refrescar();
+}
 
 /* ============================================================
    CONFIGURACIONES (empresa + pasarela QR LaFise)
@@ -1242,15 +1717,31 @@ RENDER.promos = function(){
       <span class="text-lg font-bold text-pg-green">${t.pct}%</span>
     </div>`).join('');
   const clientesFid=CLIENTES.filter(c=>c.tarjeta&&c.tarjeta!=='—').sort((a,b)=>(b.compras||0)-(a.compras||0));
-  const filas=clientesFid.map(c=>{ const comp=+c.compras||0; const falta=(PROMOS.decima.cada-((comp)%PROMOS.decima.cada))%PROMOS.decima.cada; const prox=falta===0?'¡Aplica en la próxima compra!':(falta+' compra(s) restante(s)'); return `
-    <tr class="border-b border-gray-100 hover:bg-pg-cream/60">
-      <td class="px-3 py-2"><b>${esc(c.nombre)}</b></td>
+  const filas=clientesFid.map(c=>{ const comp=+c.compras||0; const falta=faltaDecima(comp); const alerta=comp>0&&falta<=PROMO_ALERTA_UMBRAL; const prox=falta===1?'¡Aplica en la próxima compra!':(falta+' compra(s) restante(s)'); return `
+    <tr class="border-b border-gray-100 hover:bg-pg-cream/60 ${alerta?'bg-pg-gold/10':''}">
+      <td class="px-3 py-2">${alerta?'<i class="fa-solid fa-bell text-pg-gold mr-1"></i>':''}<b>${esc(c.nombre)}</b></td>
       <td class="px-3 py-2 text-[11px] text-pg-muted">${c.tarjeta}</td>
       <td class="px-3 py-2 text-center">${comp}</td>
       <td class="px-3 py-2 text-center">${(+c.puntos||0)} <span class="text-[10px] text-pg-gold">pts</span></td>
-      <td class="px-3 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${falta===0?'bg-green-100 text-green-700':'bg-amber-100 text-amber-800'}">${prox}</span></td>
+      <td class="px-3 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${falta===1?'bg-green-100 text-green-700':alerta?'bg-pg-gold/25 text-pg-gold2 font-semibold':'bg-amber-100 text-amber-800'}">${prox}</span></td>
     </tr>`; }).join('');
+  const prox=clientesProximosDecima();
+  const opt=(v)=>`<option value="${v}" ${PROMO_ALERTA_UMBRAL===v?'selected':''}>${v} compra${v>1?'s':''} antes</option>`;
+  const proxList=prox.length? prox.map(o=>`<div class="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-pg-gold/30"><span class="text-[12px] font-semibold text-pg-green"><i class="fa-solid fa-user mr-1 text-pg-gold"></i>${esc(o.c.nombre)}</span><span class="text-[11px] px-2 py-0.5 rounded-full ${o.falta===1?'bg-green-100 text-green-700':'bg-pg-gold/25 text-pg-gold2'} font-semibold">${o.falta===1?'¡próxima compra!':('faltan '+o.falta)}</span></div>`).join('') : '<p class="text-[12px] text-pg-muted">No hay clientes dentro del rango de aviso configurado.</p>';
   document.getElementById('view-promos').innerHTML=`
+  ${bannerAlertaDecima()}
+  <div class="bg-white rounded-2xl shadow-soft p-5 mb-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h3 class="font-bold text-pg-green"><i class="fa-solid fa-bell text-pg-gold mr-2"></i>Alertas de 10.ª compra</h3>
+      <div class="flex flex-wrap items-center gap-3">
+        <label class="flex items-center gap-2 text-[12px] font-semibold text-pg-green"><input type="checkbox" ${PROMO_ALERTA_ON?'checked':''} onchange="toggleAlertas(this.checked)"> Activar alertas</label>
+        <label class="flex items-center gap-2 text-[12px] text-pg-ink">Avisar cuando falten:
+          <select onchange="setAlertaUmbral(this.value)" ${PROMO_ALERTA_ON?'':'disabled'} class="px-2 py-1.5 rounded-lg border border-gray-200 text-[12px] focus:outline-none focus:border-pg-gold">${opt(1)}${opt(2)}${opt(3)}${opt(4)}${opt(5)}</select>
+        </label>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">${proxList}</div>
+  </div>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
     <div class="bg-white rounded-2xl shadow-soft p-5"><h3 class="font-bold text-pg-green mb-3"><i class="fa-solid fa-percent text-pg-gold mr-2"></i>Descuento por monto de compra</h3>
       <p class="text-[12px] text-pg-muted mb-3">Se aplica automáticamente en el Punto de Venta y en la Tienda en Línea según el subtotal de la compra.</p>
