@@ -1,7 +1,7 @@
 {
   "name": "pg-del-campo-panel",
-  "version": "1.0.0",
-  "description": "Panel de Administración e Inventario Local-First para Productos Globales del Campo",
+  "version": "1.0.1",
+  "description": "Panel de AdministraciÃ³n e Inventario Local-First para Productos Globales del Campo",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -10,7 +10,8 @@
     "build:linux": "electron-builder --linux",
     "dist:win": "npm run build:win",
     "dist:mac": "npm run build:mac",
-    "dist:linux": "npm run build:linux"
+    "dist:linux": "npm run build:linux",
+    "publish:win": "electron-builder --win --publish always"
   },
   "keywords": [
     "electron",
@@ -23,6 +24,7 @@
   "license": "ISC",
   "dependencies": {
     "better-sqlite3": "11.3.0",
+    "electron-updater": "^6.3.9",
     "exceljs": "^4.4.0",
     "firebase-admin": "^12.1.1"
   },
@@ -33,6 +35,13 @@
   "build": {
     "appId": "com.pgdelcampo.panel",
     "productName": "PG del Campo - Panel",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "proglodelcam",
+        "repo": "proglodelcam-commits"
+      }
+    ],
     "directories": {
       "output": "dist",
       "buildResources": "build"
