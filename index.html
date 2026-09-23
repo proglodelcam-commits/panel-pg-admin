@@ -106,6 +106,12 @@
       pushAll:(obj)=>update(ref(db,'productos'),obj),
       setOne:(id,obj)=>set(ref(db,'productos/'+id),obj),
       removeOne:(id)=>remove(ref(db,'productos/'+id)),
+      /* --- Helpers genericos multi-nodo (usados por la app de escritorio para
+            sincronizar clientes, ventas y transacciones en sus propios nodos) --- */
+      pushNode:(path,obj)=>update(ref(db,path),obj),
+      setAt:(path,obj)=>set(ref(db,path),obj),
+      removeAt:(path)=>remove(ref(db,path)),
+      pullNode:async(path)=>{ const s=await get(ref(db,path)); return s.val()||{}; },
       seedIfEmpty:async(obj)=>{ const s=await get(ref(db,'productos')); if(!s.exists()||!Object.keys(s.val()||{}).length){ await update(ref(db,'productos'),obj); return true;} return false; },
       nextRecibo:async()=>{ const r=ref(db,'meta/contador_recibo'); const s=await get(r); const n=s.exists()?parseInt(s.val()||1001):1001; await set(r,n+1); return String(n).padStart(7,'0'); }
     };
@@ -1067,7 +1073,7 @@ function generarResumenClientes(){
 /* ============================================================
    RECIBOS IMPRIMIBLES + QR de pago LaFise
    ============================================================ */
-function payString(monto,ref){ return ['PAGO '+EMPRESA.nombre.toUpperCase(),'Banco: '+EMPRESA.banco,'Cuenta: '+EMPRESA.cuenta,'ACH alias: '+EMPRESA.ach,'WhatsApp: +505 '+EMPRESA.whatsapp,monto?('Monto: C$ '+Number(monto).toFixed(2)):'',ref?('Ref: '+ref):''].filter(Boolean).join('\n'); }
+function payString(monto,ref){ var cuenta=(EMPRESA.cuenta||'140051265').replace(/\s+/g,''); return 'https://digital.lafise.com?BANK=BLNI&ACCOUNT_NUMBER='+encodeURIComponent(cuenta); }
 function makeQR(el,text,size){ if(!el||!window.QRCode)return; el.innerHTML=''; new QRCode(el,{text,width:size||150,height:size||150,colorDark:'#1b382b',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M}); }
 function reciboHTML(d){
   const filas=d.lineas.map(l=>`<tr><td style="padding:4px 0">${l.desc}</td><td style="text-align:center">${l.cant}</td><td style="text-align:right">${money(l.precio)}</td><td style="text-align:right">${money(l.precio*l.cant)}</td></tr>`).join('');
@@ -1622,7 +1628,7 @@ RENDER.config = function(){
         <div class="grid grid-cols-2 gap-3"><div><label class="text-xs font-semibold">ACH alias</label><input id="pAch" value="${esc(EMPRESA.ach)}" oninput="qrConfig()" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div><div><label class="text-xs font-semibold">WhatsApp</label><input id="pWa" value="${esc(EMPRESA.whatsapp)}" oninput="qrConfig()" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div></div>
         <div class="flex flex-col items-center pt-2"><div id="qrCfg" class="p-3 bg-white rounded-xl border border-gray-200"></div><p class="text-[11px] text-pg-muted mt-2 text-center">QR con los datos de transferencia hacia<br><b class="text-pg-green">${EMPRESA.banco} · Cta. ${EMPRESA.cuenta}</b></p></div>
         <a href="https://wa.me/505${EMPRESA.whatsapp}?text=${encodeURIComponent('Hola, adjunto comprobante de pago a la cuenta LaFise '+EMPRESA.cuenta)}" target="_blank" rel="noopener" class="block text-center w-full py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold text-sm"><i class="fa-brands fa-whatsapp mr-1"></i> Enviar comprobante</a>
-        <p class="text-[11px] text-pg-muted p-3 rounded-xl bg-pg-cream leading-relaxed"><b class="text-pg-green">Nota técnica:</b> el QR codifica los datos de tu cuenta. Un QR “escanear y pagar” nativo requiere la cadena EMVCo oficial de Banco LaFise; al obtenerla, reemplázala en <span class="font-mono">payString()</span> y será escaneable desde la app del banco. No se almacenan datos bancarios sensibles.</p>
+        <p class="text-[11px] text-pg-muted p-3 rounded-xl bg-pg-cream leading-relaxed"><b class="text-pg-green">Nota técnica:</b> el QR abre un enlace de LAFISE (<span class="font-mono">digital.lafise.com</span>) con tu banco y número de cuenta. Al escanearlo, el cliente es enviado a su app LAFISE Bancentro, donde ingresa cuánto te va a pagar. El enlace se arma en el dispositivo con la cuenta configurada. No se almacenan datos bancarios sensibles.</p>
       </div>
     </div>
   </div>`;
@@ -1761,5 +1767,9 @@ RENDER.promos = function(){
 };
 
 </script>
+
+<!-- Puente de escritorio: base de datos local (SQLite), sincronizacion y exportacion PDF/Excel.
+     Solo se activa dentro de la app de escritorio; en el navegador no cambia nada. -->
+<script src="pg-desktop-bridge.js"></script>
 </body>
 </html>
