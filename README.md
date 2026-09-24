@@ -1,279 +1,198 @@
-<div align="center">
+# PG del Campo — Panel de Escritorio (descargable, con base de datos local)
 
-<img src="icons/android-chrome-512x512.png" width="120" height="120" alt="PG del Campo">
+Convierte el Panel Administrativo web en una **aplicación instalable para PC**
+(Windows / macOS / Linux) que:
 
-# PG del Campo — PWA
+- Guarda todo en una **base de datos local SQLite** en la propia computadora.
+- **Funciona sin internet** (local-first): registras ventas, clientes, pedidos, etc. aunque no haya conexión.
+- **Se sincroniza automáticamente** con la nube (Firebase, la misma que usa la tienda y la tarjeta de fidelidad) **cuando vuelve la conexión**.
+- Permite **exportar cualquier resumen a PDF y a Excel** con dos botones.
 
-### *Distribución inteligente del campo a tu hogar*
-
-Aplicación web progresiva para la gestión y venta de productos nicaragüenses.<br>
-Café · Pinolillo · Pinol · Humus y más desde Jinotepe, Carazo.
-
-[![Deploy to GitHub Pages](https://github.com/FMARTINEZ20062024/pg-del-campo/actions/workflows/deploy.yml/badge.svg)](https://github.com/FMARTINEZ20062024/pg-del-campo/actions/workflows/deploy.yml)
-
-</div>
-
----
-
-## 🌿 Módulos
-
-| Módulo | Archivo | Descripción |
-|--------|---------|-------------|
-| 🏠 Portal | `index.html` | Landing page con navegación visual a todos los módulos |
-| 🛒 Tienda | `tienda.html` | Catálogo en línea con carrito, pago LAFISE y QR dinámico |
-| ⭐ Fidelidad | `fidelidad.html` | Tarjeta de fidelidad con estrellas y descuentos automáticos |
-| ⚙️ Admin | `admin.html` | Panel administrativo: inventario, ventas, clientes, reportes |
-| 📞 Contacto | `enlaces.html` | WhatsApp, ubicación, horarios y cobertura de envíos |
-
-## 📱 Funciones PWA
-
-- ✅ **Instalable** — Banner de instalación automático en Chrome/Edge/Samsung Internet
-- ✅ **Offline** — Service Worker con cache inteligente (páginas + CDN)
-- ✅ **Ícono en pantalla de inicio** — Compatible con Android e iOS
-- ✅ **Standalone** — Se ejecuta como app nativa, sin barra del navegador
-- ✅ **Actualización automática** — GitHub Actions despliega al hacer push
+> La misma `index.html` sirve para web y escritorio. El puente
+> (`pg-desktop-bridge.js`) sólo se activa dentro de la app; en un navegador
+> normal no cambia nada.
 
 ---
 
-## 🚀 Instalación y Despliegue
+## 1) Requisitos (una sola vez)
 
-### Requisitos previos
+1. Instala **Node.js LTS 18 o 20** desde https://nodejs.org (incluye `npm`).
+2. En Windows, para compilar SQLite necesitas las *Build Tools*:
+   abre PowerShell como administrador y ejecuta:
+   ```powershell
+   npm install --global windows-build-tools
+   ```
+   (En macOS basta con `xcode-select --install`; en Linux, `build-essential` y `python3`.)
 
-| Requisito | Detalle |
-|-----------|--------|
-| Cuenta de GitHub | Gratuita — [github.com/signup](https://github.com/signup) |
-| Git (opcional) | Para línea de comandos — [git-scm.com](https://git-scm.com/) |
-| Navegador moderno | Chrome, Edge, Firefox o Safari |
+## 2) Instalar dependencias
 
----
-
-### Método 1 — Subir archivos por la interfaz web de GitHub
-
-> Ideal si no tienes Git instalado o prefieres no usar la terminal.
-
-| Paso | Acción |
-|------|--------|
-| **1** | Inicia sesión en [github.com](https://github.com) y haz clic en **"New repository"** (icono + esquina superior derecha) |
-| **2** | Nombra el repositorio: `pg-del-campo`. Selecciona **Public**. Marca **Add a README file**. Clic en **Create repository** |
-| **3** | En tu repositorio nuevo, haz clic en **"Add file" → "Upload files"** |
-| **4** | Arrastra todos los archivos del ZIP a la zona de carga (o haz clic para seleccionarlos). **Importante:** arrastra las carpetas `icons/` y `.github/` completas |
-| **5** | Escribe un mensaje de commit: `Primer despliegue PWA` y haz clic en **Commit changes** |
-| **6** | Ir a **Settings → Pages**. En **Source** selecciona **GitHub Actions**. Guardar |
-| **7** | Espera 1–2 minutos. Tu sitio estará disponible en `https://TU_USUARIO.github.io/pg-del-campo/` |
-
----
-
-### Método 2 — Usando Git desde la terminal
-
-> Para usuarios con experiencia en línea de comandos.
+Abre una terminal dentro de esta carpeta y ejecuta:
 
 ```bash
-# 1. Crear el repositorio en github.com (web) → New repository → pg-del-campo
-
-# 2. Clonar el repositorio vacío
-git clone https://github.com/TU_USUARIO/pg-del-campo.git
-cd pg-del-campo
-
-# 3. Copiar todos los archivos del paquete dentro de esta carpeta
-#    (descomprime el ZIP aquí)
-cp -r /ruta/al/directorio/github-pages/* .
-cp -r /ruta/al/directorio/github-pages/.github .
-cp -r /ruta/al/directorio/github-pages/icons .
-cp    /ruta/al/directorio/github-pages/.nojekyll .
-cp    /ruta/al/directorio/github-pages/.gitignore .
-
-# 4. Subir al repositorio
-git add .
-git commit -m "🚀 Primer despliegue PWA — PG del Campo"
-git push origin main
-
-# 5. Activar GitHub Pages
-#    Ir a Settings → Pages → Source: GitHub Actions
-
-# 6. Tu URL será:
-echo "https://TU_USUARIO.github.io/pg-del-campo/"
+npm install
 ```
 
----
-
-### Método 3 — GitHub CLI (gh)
-
-> Si ya tienes [GitHub CLI](https://cli.github.com/) instalado.
+## 3) Probar la app en tu PC
 
 ```bash
-# Crear repositorio y subir en un solo comando
-cd /ruta/al/directorio/github-pages
-gh repo create pg-del-campo --public --source=. --push
-
-# Activar Pages (requiere gh 2.30+)
-gh api repos/{owner}/pg-del-campo/pages \n  -X POST -f source.branch=main -f source.path=/
-
-# Tu URL:
-echo "https://$(gh api user -q .login).github.io/pg-del-campo/"
+npm start
 ```
 
----
+Se abrirá la ventana del panel. Verás:
+- Abajo a la **izquierda**: un indicador de estado (Sin conexión / Sincronizado).
+- Abajo a la **derecha**: los botones **Exportar PDF** y **Exportar Excel**.
 
-### Verificar el despliegue
+## 4) Generar el instalador descargable
 
-1. Ve a la pestaña **Actions** en tu repositorio
-2. Deberías ver un flujo de trabajo verde ✅ llamado "Deploy to GitHub Pages"
-3. Si falla, haz clic en el flujo para ver los errores
-4. Una vez exitoso, visita tu URL
-5. Abre la **consola del navegador** (F12) para verificar que el Service Worker se registró:
-   ```
-   PG del Campo SW registrado: https://TU_USUARIO.github.io/pg-del-campo/
-   ```
+| Sistema  | Comando              | Resultado (en la carpeta `dist/`)      |
+|----------|----------------------|----------------------------------------|
+| Windows  | `npm run dist:win`   | `PG del Campo - Panel Setup 1.0.0.exe` |
+| macOS    | `npm run dist:mac`   | `PG del Campo - Panel-1.0.0.dmg`       |
+| Linux    | `npm run dist:linux` | `.AppImage` y `.deb`                    |
 
----
+> Cada sistema operativo debe compilarse en su propia plataforma
+> (Windows en Windows, macOS en Mac, etc.).
 
-## 📲 Instalar la App (como usuario final)
-
-### En Android
-
-1. Abre la URL en **Chrome** o **Edge**
-2. Espera 3 segundos — aparecerá un **banner de instalación** en la parte inferior
-3. Toca **"Instalar"** o usa el menú del navegador (⋮) → **"Instalar aplicación"**
-4. La app aparecerá en tu pantalla de inicio con el ícono de PG del Campo
-5. Se abre como app nativa (sin barra de dirección del navegador)
-
-### En iPhone / iPad
-
-1. Abre la URL en **Safari**
-2. Toca el botón **Compartir** (cuadrado con flecha ↑)
-3. Selecciona **"Agregar a pantalla de inicio"**
-4. Toca **Agregar** — el ícono de PG del Campo aparecerá en tu pantalla de inicio
-
-### En Computadora (Chrome/Edge)
-
-1. Abre la URL en Chrome o Edge
-2. Haz clic en el **ícono de instalación** en la barra de dirección (⊕ o ↓)
-3. O usa el menú → **"Instalar PG del Campo..."**
-4. La app se instala como aplicación de escritorio
+Entrega el archivo de `dist/` a quien lo vaya a usar: lo instala como cualquier
+programa y aparece con su ícono en el escritorio / menú de inicio.
 
 ---
 
-## 🔥 Firebase
+## 5) Dónde se guardan los datos
 
-| Elemento | Valor |
-|----------|-------|
-| Proyecto | `productos-globales-campo` |
-| RTDB URL | `productos-globales-campo-default-rtdb.firebaseio.com` |
-| SDK | Firebase Modular v10.12.0 |
-| Contador de recibos | `meta/contador_recibo` (unificado, valor actual: 1071) |
-| Reglas de seguridad | `database.rules.json` |
+La base de datos local (`pg-del-campo.db`) se crea automáticamente en la carpeta
+de datos del usuario del sistema operativo:
 
-> **Nota:** Los datos de Firebase se cargan en **tiempo real** y nunca se cachean en el Service Worker.
+- **Windows:** `%APPDATA%\PG del Campo - Panel`
+- **macOS:** `~/Library/Application Support/PG del Campo - Panel`
+- **Linux:** `~/.config/PG del Campo - Panel`
 
----
-
-## 🏢 Datos del Negocio
-
-| Campo | Valor |
-|-------|-------|
-| Nombre | PG del Campo |
-| RÚC | 0452907730000U |
-| Régimen | Cuota Fija |
-| Ubicación | Jinotepe, Carazo, Nicaragua |
-| WhatsApp | +505 5797 3097 |
-| Banco LAFISE | Cuenta 140051265 — Titular: Fernando Martínez — Alias ACH: 57973097 |
+Para hacer respaldo, basta con copiar ese archivo `.db`.
 
 ---
 
-## 🛠️ Estructura del Proyecto
+## 6) Cómo funciona la sincronización
+
+1. Cada registro se guarda **primero en SQLite** (siempre disponible, offline).
+2. Un vigilante detecta cuando hay internet (`online`).
+3. Al haber conexión, la app **sube** los cambios locales a Firebase y **baja**
+   los cambios de la nube al SQLite local.
+4. Si no hay internet, todo sigue funcionando; los cambios se suben en cuanto
+   vuelve la conexión.
+
+Puedes forzar la sincronización haciendo **clic en el indicador de estado**.
+La sincronización también se ejecuta sola al abrir la app y **cada 5 minutos**.
+
+### Qué se sincroniza y a dónde
+
+| Colección       | Nodo en Firebase              | Notas |
+|-----------------|-------------------------------|-------|
+| `PRODUCTOS`     | `productos` (compartido)      | Mismo nodo que usan la Tienda y la Tarjeta de Fidelidad. |
+| `CLIENTES`      | `panel_admin/clientes`        | Nodo propio del panel. Los clientes que ya provienen del nodo compartido de la Tienda (`cloudKey`/`online`) **no se reenvían**. |
+| `VENTAS`        | `panel_admin/ventas`          | Nodo propio del panel (clave: `recibo`). |
+| `TRANSACCIONES` | `panel_admin/transacciones`   | Nodo propio del panel (clave: `id`/`recibo`). |
+
+> **Importante:** clientes, ventas y transacciones se sincronizan en nodos
+> **propios del panel** (`panel_admin/*`) para **no tocar** los nodos que la
+> Tienda en Línea y la Tarjeta de Fidelidad comparten y leen. Así, varias PCs
+> con esta app se mantienen sincronizadas entre sí sin interferir con las demás
+> aplicaciones.
+
+### Direcciones de la sincronización
+
+- **Subida (local → nube):** ocurre dentro de `syncNow()` — al abrir la app,
+  cada 5 minutos, al reconectar y al pulsar el badge. Sube productos, clientes,
+  ventas y transacciones locales.
+- **Bajada (nube → local):** *watchers* en tiempo real sobre `panel_admin/*`
+  fusionan los cambios en los arreglos y los persisten en SQLite de inmediato.
+  Los watchers **no** disparan una subida, lo que evita bucles de
+  sincronización.
+
+---
+
+## 7) Guardado automático en la base de datos local (YA CONECTADO)
+
+No tienes que editar nada del panel: el guardado a SQLite es **automático**.
+
+El panel llama a `refrescar()` después de cada cambio (registrar una venta, dar
+de alta un cliente, editar un producto, crear un pedido, etc.). El puente
+`pg-desktop-bridge.js` intercepta esa función y, con un pequeño retardo,
+**vuelca todos los arreglos a SQLite** reflejando altas, ediciones y bajas.
+
+Se guardan automáticamente estas colecciones:
+
+| Colección en el panel | Tabla en SQLite | Clave usada        |
+|-----------------------|-----------------|--------------------|
+| `PRODUCTOS`           | `productos`     | `id`               |
+| `CLIENTES`            | `clientes`      | `id`               |
+| `VENTAS`              | `ventas`        | `recibo`           |
+| `PEDIDOS`             | `pedidos`       | `recibo`           |
+| `TRANSACCIONES`       | `transacciones` | `id` / `recibo`    |
+| `CUPONES`             | `cupones`       | `codigo`           |
+| `USUARIOS`            | `usuarios`      | `id`               |
+| `SALIDAS`             | `salidas`       | `id`               |
+
+Garantías del guardado automático:
+
+- **Altas, ediciones y bajas** quedan reflejadas (la tabla local se reescribe
+  para que coincida exactamente con lo que ves en pantalla).
+- Los registros que provienen de la nube (marcados `cloud:true`, como pedidos de
+  la Tienda en Línea o la Tarjeta de Fidelidad) **no** se guardan como locales:
+  se regeneran solos desde Firebase al reconectar, evitando duplicados.
+- Además del guardado tras cada cambio, hay una **red de seguridad** que graba
+  cada 30 segundos y otra **al cerrar la ventana**.
+- Al abrir la app, los datos se **cargan primero desde SQLite** (funciona sin
+  internet).
+
+### Uso manual (opcional)
+
+Aunque no hace falta, tienes una API disponible por si quieres guardar o
+recargar a mano desde la consola o desde tu propio código:
+
+```js
+PGLocal.persistNow();          // fuerza el guardado inmediato de todo
+PGLocal.reload();              // recarga los arreglos desde SQLite
+PGLocal.save('clientes', obj); // guarda/actualiza un registro suelto
+PGLocal.remove('ventas', id);  // elimina un registro por id
+```
+
+> Nota: la primera vez que abras la app, los datos de ejemplo que trae el panel
+> se guardarán en SQLite y pasarán a ser tus datos iniciales. Puedes
+> eliminarlos desde la interfaz y las bajas quedarán guardadas.
+
+---
+
+## 8) Íconos de la app (YA INCLUIDOS)
+
+La app **ya trae su ícono oficial** de PG del Campo (el logotipo dorado sobre
+fondo verde) en la carpeta `build/`:
+
+- `icon.ico` — Windows (multi-resolución: 16 a 256 px)
+- `icon.icns` — macOS
+- `icon.png` — Linux (512×512)
+
+Con estos archivos, el ícono aparece automáticamente:
+
+- en el **instalador** y en el **acceso directo del escritorio / menú de inicio**,
+- en la **ventana de la app** y en la **barra de tareas / Dock** al abrirla.
+
+> Si algún día quieres cambiar el ícono, solo reemplaza esos tres archivos en
+> `build/` (manteniendo los mismos nombres) y vuelve a generar el instalador.
+
+---
+
+## Estructura del proyecto
 
 ```
-pg-del-campo/
-├── .github/workflows/deploy.yml   ← Auto-deploy GitHub Actions
-├── .gitignore                      ← Archivos excluidos
-├── .nojekyll                       ← Desactiva Jekyll en GitHub Pages
-├── 404.html                        ← Página no encontrada (redirige al portal)
-├── README.md                       ← Este archivo
-├── index.html                      ← 🏠 Portal principal
-├── tienda.html                     ← 🛒 Tienda en Línea
-├── fidelidad.html                  ← ⭐ Tarjeta de Fidelidad
-├── admin.html                      ← ⚙️ Panel Administrativo
-├── enlaces.html                    ← 📞 Contacto y Enlaces
-├── manifest.webmanifest            ← 📱 Configuración PWA
-├── sw.js                           ← 🔄 Service Worker (cache inteligente)
-├── favicon.ico                     ← Favicon
-├── icons/                          ← Íconos PWA (7 tamaños)
-└── database.rules.json             ← 🔒 Reglas Firebase (referencia)
+pg-desktop/
+├── package.json              Configuración y scripts de compilación
+├── electron/
+│   ├── main.js               Proceso principal + exportación PDF/Excel
+│   ├── preload.js            Puente seguro (window.PGDesktop)
+│   ├── db.js                 Base de datos local SQLite
+│   └── export-excel.js       Generador de Excel (exceljs)
+├── src/
+│   ├── index.html            Tu panel administrativo
+│   └── pg-desktop-bridge.js  Local-first + sync + botones de exportación
+└── build/                    Íconos de la app
 ```
-
----
-
-## ❓ Preguntas Frecuentes
-
-<details>
-<summary><strong>¿Por qué no se instala la app en mi teléfono?</strong></summary>
-
-- Necesitas abrir la URL en **Chrome** (Android) o **Safari** (iOS)
-- La PWA requiere **HTTPS** — GitHub Pages lo proporciona automáticamente
-- En iOS, la instalación es manual: Safari → Compartir → Agregar a pantalla de inicio
-- El banner aparece después de 3 segundos si el navegador lo soporta
-</details>
-
-<details>
-<summary><strong>¿Cómo actualizo la app después de hacer cambios?</strong></summary>
-
-1. Sube los cambios al repositorio (`git push`)
-2. GitHub Actions despliega automáticamente en ~1 minuto
-3. Al abrir la app, el Service Worker verifica actualizaciones y las aplica al recargar
-4. Para forzar actualización: cierra todas las pestañas de la app y vuelve a abrir
-</details>
-
-<details>
-<summary><strong>¿Funciona sin internet?</strong></summary>
-
-- Las **páginas visitadas** se cargan offline gracias al Service Worker
-- Los **datos de Firebase** (productos, compras) requieren conexión
-- Los **iconos y estilos** cachean automáticamente en la primera visita
-- Si no hay conexión y navegas a una página no cacheada, verás el portal
-</details>
-
-<details>
-<summary><strong>¿Cómo personalizo el nombre del repositorio?</strong></summary>
-
-- Puedes usar cualquier nombre: `pg-del-campo`, `tienda-pg`, etc.
-- La URL cambia según el nombre: `https://TU_USUARIO.github.io/NOMBRE/`
-- Si quieres una URL sin subdirectorio, crea un repositorio llamado `TU_USUARIO.github.io`
-- En ese caso la URL será: `https://TU_USUARIO.github.io/`
-</details>
-
-<details>
-<summary><strong>¿Puedo usar un dominio personalizado (ej: pgdelcampo.com)?</strong></summary>
-
-Sí. En GitHub:
-1. Ve a **Settings → Pages → Custom domain**
-2. Escribe tu dominio: `pgdelcampo.com`
-3. Marca **Enforce HTTPS**
-4. En tu proveedor de dominio, configura los DNS:
-   - Registro CNAME: `www` → `TU_USUARIO.github.io`
-   - Registros A (apex):
-     - `185.199.108.153`
-     - `185.199.109.153`
-     - `185.199.110.153`
-     - `185.199.111.153`
-</details>
-
-<details>
-<summary><strong>¿El panel Admin es seguro?</strong></summary>
-
-- El panel requiere **inicio de sesión** con usuario y contraseña almacenados en Firebase
-- Los datos de ventas, clientes y finanzas solo se leen con autenticación (`auth != null`)
-- Los productos y cupones son de **lectura pública** (para que la tienda funcione sin login)
-- Las reglas de seguridad están en `database.rules.json`
-</details>
-
----
-
-<div align="center">
-
-## *BS"D
-
-**Con la ayuda del Cielo todo es posible realizar**
-
-© 2024–2026 PG del Campo — Jinotepe, Carazo, Nicaragua
-
-</div>
