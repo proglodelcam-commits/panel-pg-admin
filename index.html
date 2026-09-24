@@ -321,6 +321,7 @@ const MENU = [
   {id:'vender',       t:'Vender',            i:'fa-cash-register'},
   {id:'pedidos',      t:'Pedidos',           i:'fa-clipboard-list'},
   {id:'catalogo',     t:'Catálogo en Línea', i:'fa-store'},
+  {id:'anuncios',     t:'Anuncios',           i:'fa-bullhorn'},
   {id:'finanzas',     t:'Finanzas',          i:'fa-chart-line'},
   {id:'ingresos',     t:'Ingresos',          i:'fa-coins'},
   {id:'cxc',          t:'Cuentas por Cobrar',i:'fa-hand-holding-dollar'},
@@ -827,6 +828,7 @@ function startCloudLive(){
   window.PGSync.watchNode('transacciones', d=>{ CLOUD.transacciones=d||{}; rebuildCloudRecibos(); refrescar(); });
   window.PGSync.watchNode('compras_registro', d=>{ CLOUD.compras=d||{}; rebuildCloudRecibos(); refrescar(); });
   window.PGSync.watchNode('cuentas_por_cobrar', d=>{ mergeCloudCxc(d); refrescar(); });
+  window.PGSync.watchNode('anuncios', d=>{ ANUNCIOS=d||{}; refrescar(); });
   if(typeof setSyncMsg==='function') setSyncMsg('<span class="text-pg-green"><i class="fa-solid fa-satellite-dish"></i> Sincronizaci\u00f3n en vivo activa</span>');
 }
 (function waitCloud(){ let n=0; (function t(){ if(window.PGSync&&window.PGSync.ok&&window.PGSync.watchNode){ startCloudLive(); } else if(n++<25){ setTimeout(t,300); } })(); })();
@@ -1766,6 +1768,118 @@ RENDER.promos = function(){
     </table></div></div>`;
 };
 
+/* ============================================================
+   ANUNCIOS (Firebase: anuncios/) — se muestran en la Tienda en Línea
+   ============================================================ */
+var ANUNCIOS = (typeof ANUNCIOS!=='undefined' && ANUNCIOS) ? ANUNCIOS : {};
+function anunciosCloudOk(){ return !!(window.PGSync && window.PGSync.ok && window.PGSync.setAt); }
+
+RENDER.anuncios = function(){
+  const lista = Object.entries(ANUNCIOS||{}).map(([id,v])=>({id,...v})).sort((a,b)=>(b.creado||0)-(a.creado||0));
+  const activos = lista.filter(a=>a.activo!==false).length;
+  const cards = lista.map(a=>{
+    const on = a.activo!==false;
+    let media;
+    if(a.tipo==='video' && a.url){ media = `<iframe src="${esc(a.url)}" class="w-full h-40 rounded-t-2xl" allow="autoplay;encrypted-media" allowfullscreen loading="lazy"></iframe>`; }
+    else if(a.imagen){ media = `<img src="${esc(a.imagen)}" alt="${esc(a.titulo||'Anuncio')}" class="w-full h-40 object-cover rounded-t-2xl" onerror="this.style.display='none'">`; }
+    else { media = `<div class="w-full h-40 rounded-t-2xl flex items-center justify-center bg-gradient-to-br from-pg-green to-pg-green2 text-white text-center font-semibold px-4">${esc(a.titulo||'Anuncio')}</div>`; }
+    return `<div class="bg-white rounded-2xl shadow-soft overflow-hidden border ${on?'border-pg-leaf/40':'border-gray-200 opacity-70'}">
+      <div class="relative">${media}
+        <span class="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full ${on?'bg-green-100 text-green-700':'bg-gray-200 text-gray-500'} font-semibold">${on?'Activo':'Oculto'}</span>
+        <span class="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full bg-black/50 text-white"><i class="fa-solid ${a.tipo==='video'?'fa-video':'fa-image'} mr-1"></i>${a.tipo==='video'?'Video':'Imagen'}</span>
+      </div>
+      <div class="p-4">
+        <h4 class="font-bold text-pg-green text-sm mb-1">${esc(a.titulo||'(sin título)')}</h4>
+        <p class="text-[12px] text-pg-muted mb-3">${esc(a.descripcion||'')}</p>
+        <div class="flex items-center gap-2">
+          <button onclick="editarAnuncio('${a.id}')" class="flex-1 text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold hover:bg-pg-leaf/20"><i class="fa-solid fa-pen mr-1"></i>Editar</button>
+          <button onclick="toggleAnuncio('${a.id}')" class="text-[12px] px-3 py-1.5 rounded-lg ${on?'bg-amber-100 text-amber-800':'bg-green-100 text-green-700'} font-semibold">${on?'<i class="fa-solid fa-eye-slash mr-1"></i>Ocultar':'<i class="fa-solid fa-eye mr-1"></i>Mostrar'}</button>
+          <button onclick="delAnuncio('${a.id}')" class="text-[12px] px-3 py-1.5 rounded-lg bg-red-100 text-red-700 font-semibold"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('view-anuncios').innerHTML = `
+  <div class="bg-white rounded-2xl shadow-soft p-5 mb-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h3 class="font-bold text-pg-green"><i class="fa-solid fa-bullhorn text-pg-gold mr-2"></i>Anuncios de la Tienda en Línea</h3>
+        <p class="text-[12px] text-pg-muted mt-1">Publica promociones (imagen o video) que aparecen en el carrusel de la Tienda en Línea. Los cambios se reflejan al instante.</p>
+      </div>
+      <button onclick="nuevoAnuncio()" class="px-4 py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white font-semibold text-sm"><i class="fa-solid fa-plus mr-1"></i>Nuevo anuncio</button>
+    </div>
+    <div class="flex flex-wrap gap-3 mt-4 text-[12px]">
+      <span class="px-3 py-1 rounded-full bg-pg-cream text-pg-green font-semibold">Total: ${lista.length}</span>
+      <span class="px-3 py-1 rounded-full bg-green-100 text-green-700 font-semibold">Activos: ${activos}</span>
+      ${anunciosCloudOk()?'':'<span class="px-3 py-1 rounded-full bg-red-100 text-red-700 font-semibold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Sin conexión a la nube</span>'}
+    </div>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    ${cards || '<div class="col-span-full text-center py-10 text-pg-muted bg-white rounded-2xl shadow-soft"><i class="fa-solid fa-bullhorn text-3xl mb-2 block text-pg-leaf"></i>Aún no hay anuncios. Crea el primero para mostrarlo en la Tienda en Línea.</div>'}
+  </div>`;
+};
+function _anuncioForm(a){
+  a = a || {};
+  const esVideo = a.tipo==='video';
+  return `
+  <h3 class="text-lg font-bold text-pg-green mb-4"><i class="fa-solid fa-bullhorn text-pg-gold mr-2"></i>${a.id?'Editar anuncio':'Nuevo anuncio'}</h3>
+  <div class="space-y-3">
+    <div><label class="text-xs font-semibold">Título</label><input id="anTit" value="${esc(a.titulo||'')}" placeholder="Ej. ¡Café en promoción!" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+    <div><label class="text-xs font-semibold">Descripción</label><textarea id="anDesc" rows="2" placeholder="Detalle de la promoción" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold">${esc(a.descripcion||'')}</textarea></div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="text-xs font-semibold">Tipo</label>
+        <select id="anTipo" onchange="_anuncioToggleTipo()" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold">
+          <option value="imagen" ${esVideo?'':'selected'}>Imagen</option>
+          <option value="video" ${esVideo?'selected':''}>Video</option>
+        </select>
+      </div>
+      <div class="flex items-end"><label class="flex items-center gap-2 text-[13px] font-semibold text-pg-green"><input type="checkbox" id="anActivo" ${a.activo!==false?'checked':''}> Mostrar en la tienda</label></div>
+    </div>
+    <div id="anBoxImg" class="${esVideo?'hidden':''}"><label class="text-xs font-semibold">URL de la imagen</label><input id="anImg" value="${esc(a.imagen||'')}" placeholder="https://..." class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"><p class="text-[11px] text-pg-muted mt-1">Pega el enlace directo de la imagen (jpg/png).</p></div>
+    <div id="anBoxVid" class="${esVideo?'':'hidden'}"><label class="text-xs font-semibold">URL del video (embed)</label><input id="anUrl" value="${esc(a.url||'')}" placeholder="https://www.youtube.com/embed/..." class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"><p class="text-[11px] text-pg-muted mt-1">Usa el enlace de inserción (embed). En YouTube: Compartir → Insertar.</p></div>
+  </div>
+  <div class="flex gap-3 mt-5">
+    <button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-pg-ink font-semibold hover:bg-gray-200">Cancelar</button>
+    <button onclick="guardarAnuncio('${a.id||''}')" class="flex-1 py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white font-semibold"><i class="fa-solid fa-check mr-1"></i>Guardar</button>
+  </div>`;
+}
+function _anuncioToggleTipo(){
+  const v=document.getElementById('anTipo').value;
+  document.getElementById('anBoxImg').classList.toggle('hidden', v==='video');
+  document.getElementById('anBoxVid').classList.toggle('hidden', v!=='video');
+}
+function nuevoAnuncio(){ if(!anunciosCloudOk()){ toast('Nube no disponible (revise su conexión)'); return; } openModal(_anuncioForm({})); }
+function editarAnuncio(id){ const a=ANUNCIOS[id]; if(!a){toast('Anuncio no encontrado');return;} openModal(_anuncioForm(Object.assign({id},a))); }
+function guardarAnuncio(id){
+  if(!anunciosCloudOk()){ toast('Nube no disponible (revise su conexión)'); return; }
+  const titulo=(document.getElementById('anTit').value||'').trim();
+  const descripcion=(document.getElementById('anDesc').value||'').trim();
+  const tipo=document.getElementById('anTipo').value;
+  const imgEl=document.getElementById('anImg'); const urlEl=document.getElementById('anUrl');
+  const imagen=(imgEl?imgEl.value:'').trim();
+  const url=(urlEl?urlEl.value:'').trim();
+  const activo=document.getElementById('anActivo').checked;
+  if(!titulo && !imagen && !url){ toast('Agrega al menos un título, imagen o video'); return; }
+  if(tipo==='video' && !url){ toast('Ingresa la URL del video'); return; }
+  const nid = id || ('a'+Date.now());
+  const prev = ANUNCIOS[nid]||{};
+  const obj = { titulo, descripcion, tipo, activo, creado: prev.creado||Date.now(), actualizado: Date.now() };
+  if(tipo==='video'){ obj.url=url; if(imagen) obj.imagen=imagen; } else { obj.imagen=imagen; }
+  try{ window.PGSync.setAt('anuncios/'+nid, obj); toast(id?'Anuncio actualizado':'Anuncio publicado'); closeModal(); }
+  catch(e){ toast('No se pudo guardar'); }
+}
+function toggleAnuncio(id){
+  if(!anunciosCloudOk()){ toast('Nube no disponible'); return; }
+  const a=ANUNCIOS[id]; if(!a) return;
+  const obj=Object.assign({}, a, { activo:!(a.activo!==false), actualizado:Date.now() });
+  try{ window.PGSync.setAt('anuncios/'+id, obj); }catch(e){ toast('No se pudo actualizar'); }
+}
+function delAnuncio(id){
+  if(!anunciosCloudOk()){ toast('Nube no disponible'); return; }
+  const a=ANUNCIOS[id]; if(!a) return;
+  if(!confirm('¿Eliminar este anuncio? Dejará de mostrarse en la Tienda en Línea.')) return;
+  try{ window.PGSync.removeAt('anuncios/'+id); toast('Anuncio eliminado'); }catch(e){ toast('No se pudo eliminar'); }
+}
 </script>
 
 <!-- Puente de escritorio: base de datos local (SQLite), sincronizacion y exportacion PDF/Excel.
