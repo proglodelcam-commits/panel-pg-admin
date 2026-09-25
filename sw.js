@@ -1,10 +1,8 @@
 // ═══════════════════════════════════════════════════════
 // PG del Campo — Service Worker Unificado (GitHub Pages PWA)
-// Versión: 2.0 — 2026-09-11
+// Versión: 3.0 — index.html ahora Network-First (recibe actualizaciones)
 // ═══════════════════════════════════════════════════════
-
-const CACHE_NAME = 'pg-del-campo-v2';
-
+const CACHE_NAME = 'pg-del-campo-v3';
 // Assets locales a pre-cachear durante la instalación
 const PRECACHE_ASSETS = [
   './',
@@ -23,7 +21,6 @@ const PRECACHE_ASSETS = [
   './icons/android-chrome-192x192.png',
   './icons/android-chrome-512x512.png'
 ];
-
 // Dominios externos que cacheamos como runtime
 const RUNTIME_CACHE_HOSTS = [
   'fonts.googleapis.com',
@@ -33,7 +30,6 @@ const RUNTIME_CACHE_HOSTS = [
   'cdn.jsdelivr.net',
   'api.qrserver.com'
 ];
-
 // ── INSTALL: pre-cachea todos los assets locales ──
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -45,7 +41,6 @@ self.addEventListener('install', event => {
       .then(() => self.skipWaiting())
   );
 });
-
 // ── ACTIVATE: limpia caches viejas y toma control ──
 self.addEventListener('activate', event => {
   event.waitUntil(
@@ -56,35 +51,49 @@ self.addEventListener('activate', event => {
           return caches.delete(k);
         })
       )
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
-
-// ── FETCH: estrategia cache-first para locales, network-first para externos ──
+// ── FETCH ──
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-
   // Solo interceptar GET requests
   if (event.request.method !== 'GET') return;
-
   // Firebase RTDB: NO cachear (datos en tiempo real)
-  if (url.hostname.includes('firebaseio.com')) return;
+  if (url.hostname.includes('firebaseio.com') || url.hostname.includes('firebasedatabase.app')) return;
 
-  // Recursos locales: Cache-First
+  // Recursos locales
   if (url.origin === self.location.origin) {
+
+    // HTML / navegación: NETWORK-FIRST (siempre trae la última versión publicada)
+    if (event.request.mode === 'navigate' ||
+        url.pathname === '/' || url.pathname.endsWith('/') ||
+        url.pathname.endsWith('.html')) {
+      event.respondWith(
+        fetch(event.request).then(response => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          }
+          return response;
+        }).catch(() =>
+          caches.match(event.request).then(cached => cached || caches.match('./index.html'))
+        )
+      );
+      return;
+    }
+
+    // Resto de estáticos (íconos, favicon, manifest…): Cache-First
     event.respondWith(
       caches.match(event.request).then(cached => {
         if (cached) return cached;
         return fetch(event.request).then(response => {
-          // Cachear la respuesta para futuras visitas
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
           }
           return response;
         }).catch(() => {
-          // Fallback offline para navegación
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html');
           }
@@ -111,6 +120,5 @@ self.addEventListener('fetch', event => {
     );
     return;
   }
-
   // Otros recursos: Network only
 });
