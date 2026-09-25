@@ -305,7 +305,7 @@ const STOCK_META = {
 function stockCounts(){ const c={disponible:0,minimo:0,agotado:0,sincontrol:0}; PRODUCTOS.forEach(p=>c[stockState(p)]++); return c; }
 function totalVentasHoy(){ return VENTAS.reduce((s,v)=>s+v.total,0); }
 function valorStock(){ return PRODUCTOS.reduce((s,p)=>s+p.stock*p.costo,0); }
-function pedidosPendientes(){ return PEDIDOS.filter(p=>p.estado!=='Entregado'); }
+function pedidosPendientes(){ return PEDIDOS.filter(p=>p.estado!=='Entregado'&&p.estado!=='Cancelado'); }
 function cxcTotal(){ return CLIENTES.reduce((s,c)=>s+c.saldo,0); }
 
 
@@ -392,7 +392,7 @@ RENDER.inicio = function(){
       <td class="px-3 py-2 text-pg-muted hidden md:table-cell">${p.items.map(i=>i.q+'× '+esc(i.n)).join(', ')}</td>
       <td class="px-3 py-2 text-right font-semibold">${money(p.total)}</td>
       <td class="px-3 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${p.estado==='Pendiente'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-800'}">${p.estado}</span></td>
-      <td class="px-3 py-2 text-center whitespace-nowrap"><button onclick="reciboPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2 mr-1"><i class="fa-solid fa-receipt"></i></button><button onclick="entregarPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-green text-white hover:bg-pg-green2"><i class="fa-solid fa-check"></i></button></td>
+      <td class="px-3 py-2 text-center whitespace-nowrap"><button onclick="reciboPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2 mr-1"><i class="fa-solid fa-receipt"></i></button><button onclick="entregarPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-green text-white hover:bg-pg-green2 mr-1"><i class="fa-solid fa-check"></i></button><button onclick="cancelarPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-red-600 text-white hover:bg-red-700" title="Cancelar pedido"><i class="fa-solid fa-xmark"></i></button></td>
     </tr>`).join('');
   document.getElementById('view-inicio').innerHTML=`
   ${bannerAlertaDecima()}
@@ -441,7 +441,8 @@ RENDER.inicio = function(){
   setTimeout(drawDonut,60);
 };
 function drawDonut(){ const el=document.getElementById('donutStock'); if(!el||!window.Chart) return; const c=stockCounts(); if(_donut)_donut.destroy(); _donut=new Chart(el,{type:'doughnut',data:{labels:['Disponibilidad','Mínimo','Agotados','Sin control'],datasets:[{data:[c.disponible,c.minimo,c.agotado,c.sincontrol],backgroundColor:['#8eb057','#c8963e','#c0392b','#9aa0a6'],borderWidth:2,borderColor:'#fff'}]},options:{cutout:'62%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:true}}); }
-function entregarPedido(r){ const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return; p.estado='Entregado'; if(typeof DELIVERED_ONLINE!=='undefined') DELIVERED_ONLINE[r]=true; refrescar(); toast('Pedido '+r+' entregado'); }
+function entregarPedido(r){ const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return; p.estado='Entregado'; if(typeof DELIVERED_ONLINE!=='undefined') DELIVERED_ONLINE[r]=true; ORDER_STATE[r]='Entregado'; saveOrderState(); cloudSetOrderState(r,'Entregado'); refrescar(); toast('Pedido '+r+' entregado'); }
+function cancelarPedido(r){ const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return; if(!confirm('¿Cancelar el pedido '+r+'? Ya no aparecerá en pendientes.'))return; p.estado='Cancelado'; ORDER_STATE[r]='Cancelado'; saveOrderState(); cloudSetOrderState(r,'Cancelado'); refrescar(); toast('Pedido '+r+' cancelado'); }
 
 
 /* === app2_4.js === */
@@ -759,6 +760,14 @@ async function syncPush(){
 let CLOUD={ productos:{}, clientes:{}, transacciones:{}, compras:{}, cxc:{} };
 let CLOUD_ON=false;
 let DELIVERED_ONLINE={};
+/* Estado persistente de pedidos (recibo -> 'Entregado' | 'Cancelado').
+   Se guarda en localStorage (offline) y se sincroniza a la nube en 'pedidos_estado'
+   para que no reaparezcan como Pendiente tras reiniciar o al re-sincronizar. */
+let ORDER_STATE=(function(){ try{ return JSON.parse(localStorage.getItem('pg_order_state')||'{}')||{}; }catch(e){ return {}; } })();
+function saveOrderState(){ try{ localStorage.setItem('pg_order_state',JSON.stringify(ORDER_STATE)); }catch(e){} }
+function cloudSetOrderState(r,st){ if(window.PGSync&&window.PGSync.ok&&window.PGSync.setAt){ try{ window.PGSync.setAt('pedidos_estado/'+r,{estado:st}); }catch(e){} } }
+function applyOrderState(){ PEDIDOS.forEach(p=>{ const st=ORDER_STATE[p.recibo]; if(st) p.estado=st; }); }
+applyOrderState();
 
 function cloudClientCode(tel){ const d=String(tel||'').replace(/\D/g,''); return 'PG-'+((d.slice(-4)||'0000').padStart(4,'0')); }
 
@@ -810,8 +819,9 @@ function rebuildCloudRecibos(){
   list.forEach(m=>{
     const pago=m.credito?'Cr\u00e9dito':(m.estado_pago==='pendiente'?'Pendiente':'Pagado');
     const metodo=m.metodo||'Transferencia';
-    const entregado=!!DELIVERED_ONLINE[m.recibo];
-    PEDIDOS.unshift({ cloud:true, recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', tel:m.tel||'', items:m.items||[], total:+m.total||0, ship:+m.ship||0, descMonto:(m.descMonto!=null?+m.descMonto:null), descTipo:m.descTipo||'', estado:entregado?'Entregado':'Pendiente', pago, fecha:m.fecha||'' });
+    const st=ORDER_STATE[m.recibo]; const entregado=!!DELIVERED_ONLINE[m.recibo]||st==='Entregado';
+    const estadoPed=(st==='Cancelado')?'Cancelado':(entregado?'Entregado':'Pendiente');
+    PEDIDOS.unshift({ cloud:true, recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', tel:m.tel||'', items:m.items||[], total:+m.total||0, ship:+m.ship||0, descMonto:(m.descMonto!=null?+m.descMonto:null), descTipo:m.descTipo||'', estado:estadoPed, pago, fecha:m.fecha||'' });
     VENTAS.unshift({ cloud:true, hora:String(m.fecha||'').split(',').pop().trim(), recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', total:+m.total||0, ship:+m.ship||0, metodo });
     TRANSACCIONES.unshift({ cloud:true, id:'TX-'+m.recibo, recibo:m.recibo, fecha:m.fecha||'', metodo, monto:+m.total||0, estado:(pago==='Pagado'?'Confirmada':'Pendiente'), origen:m.origen||'Tienda en Linea' });
   });
@@ -827,6 +837,7 @@ function startCloudLive(){
   window.PGSync.watchNode('compras_registro', d=>{ CLOUD.compras=d||{}; rebuildCloudRecibos(); refrescar(); });
   window.PGSync.watchNode('cuentas_por_cobrar', d=>{ mergeCloudCxc(d); refrescar(); });
   window.PGSync.watchNode('anuncios', d=>{ ANUNCIOS=d||{}; refrescar(); });
+  window.PGSync.watchNode('pedidos_estado', d=>{ d=d||{}; Object.keys(d).forEach(r=>{ const st=d[r]&&d[r].estado; if(st) ORDER_STATE[r]=st; }); saveOrderState(); applyOrderState(); rebuildCloudRecibos(); refrescar(); });
   if(typeof setSyncMsg==='function') setSyncMsg('<span class="text-pg-green"><i class="fa-solid fa-satellite-dish"></i> Sincronizaci\u00f3n en vivo activa</span>');
 }
 (function waitCloud(){ let n=0; (function t(){ if(window.PGSync&&window.PGSync.ok&&window.PGSync.watchNode){ startCloudLive(); } else if(n++<25){ setTimeout(t,300); } })(); })();
@@ -849,8 +860,8 @@ RENDER.pedidos = function(){
       <td class="px-3 py-2 text-pg-muted text-[11px]">${p.fecha}</td>
       <td class="px-3 py-2 text-right font-semibold">${money(p.total)}</td>
       <td class="px-3 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${p.pago==='Pagado'?'bg-green-100 text-green-700':p.pago==='Crédito'?'bg-amber-100 text-amber-800':'bg-red-100 text-red-700'}">${p.pago}</span></td>
-      <td class="px-3 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${p.estado==='Entregado'?'bg-green-100 text-green-700':p.estado==='Pendiente'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-800'}">${p.estado}</span></td>
-      <td class="px-3 py-2 text-center whitespace-nowrap"><button onclick="reciboPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2 mr-1"><i class="fa-solid fa-receipt"></i></button>${p.estado!=='Entregado'?`<button onclick="entregarPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-green text-white hover:bg-pg-green2"><i class="fa-solid fa-check"></i></button>`:'<i class="fa-solid fa-circle-check text-pg-leaf"></i>'}</td>
+      <td class="px-3 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${p.estado==='Entregado'?'bg-green-100 text-green-700':p.estado==='Cancelado'?'bg-gray-200 text-gray-600':p.estado==='Pendiente'?'bg-red-100 text-red-700':'bg-amber-100 text-amber-800'}">${p.estado}</span></td>
+      <td class="px-3 py-2 text-center whitespace-nowrap"><button onclick="reciboPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2 mr-1"><i class="fa-solid fa-receipt"></i></button>${(p.estado!=='Entregado'&&p.estado!=='Cancelado')?`<button onclick="entregarPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-green text-white hover:bg-pg-green2 mr-1"><i class="fa-solid fa-check"></i></button><button onclick="cancelarPedido('${p.recibo}')" class="text-[11px] px-2 py-1 rounded-md bg-red-600 text-white hover:bg-red-700" title="Cancelar pedido"><i class="fa-solid fa-xmark"></i></button>`:(p.estado==='Entregado'?'<i class="fa-solid fa-circle-check text-pg-leaf"></i>':'<i class="fa-solid fa-ban text-gray-400"></i>')}</td>
     </tr>`).join('');
   const chip=(v)=>`<button onclick="pedFiltro('${v}')" class="px-3 py-1.5 rounded-full text-xs font-semibold border ${PED_FILTRO===v?'bg-pg-green text-white border-pg-green':'bg-white text-pg-green border-gray-200'}">${v}</button>`;
   document.getElementById('view-pedidos').innerHTML=`
