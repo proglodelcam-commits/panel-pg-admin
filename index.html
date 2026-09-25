@@ -372,7 +372,7 @@ function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('-
 function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toastMsg').textContent=msg; t.classList.remove('hidden'); t.classList.add('flex'); clearTimeout(window._tt); window._tt=setTimeout(()=>{t.classList.add('hidden');t.classList.remove('flex');},2600); }
 function openModal(html){ document.getElementById('modalBody').innerHTML=html; document.getElementById('modal').classList.add('open'); }
 function closeModal(){ document.getElementById('modal').classList.remove('open'); }
-function refrescar(){ if(RENDER[VISTA]) RENDER[VISTA](); }
+function refrescar(){ if(typeof VISTA==='undefined'||!document.getElementById('view-'+VISTA)) return; if(RENDER[VISTA]) RENDER[VISTA](); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 
