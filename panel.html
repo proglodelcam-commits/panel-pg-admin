@@ -233,45 +233,30 @@ function driveDirect(url){
 }
 
 /* ---------- CATÁLOGO ÚNICO (editable) ---------- */
-let PRODUCTOS = [
-  { id:'P01', nombre:'Café Molido Premium 1lb', cat:'Café',    precio:180, costo:110, stock:48, min:20, control:true,  online:true,  puntos:9,  icon:'fa-mug-hot' },
-  { id:'P02', nombre:'Café en Grano 1lb',       cat:'Café',    precio:200, costo:120, stock:12, min:15, control:true,  online:true,  puntos:10, icon:'fa-seedling' },
-  { id:'P03', nombre:'Pinolillo Tradicional 1lb',cat:'Pinolillo',precio:90, costo:52,  stock:5,  min:10, control:true,  online:true,  puntos:5,  icon:'fa-wheat-awn' },
-  { id:'P04', nombre:'Pinol Puro 1lb',           cat:'Pinol',   precio:70,  costo:40,  stock:34, min:12, control:true,  online:true,  puntos:4,  icon:'fa-bowl-rice' },
-  { id:'P05', nombre:'Humus de Lombriz 5kg',     cat:'Humus',   precio:250, costo:150, stock:6,  min:8,  control:true,  online:true,  puntos:12, icon:'fa-worm' },
-  { id:'P06', nombre:'Humus de Lombriz 1kg',     cat:'Humus',   precio:80,  costo:45,  stock:60, min:15, control:true,  online:true,  puntos:4,  icon:'fa-leaf' },
-  { id:'P07', nombre:'Café Oro Especial 1lb',    cat:'Café',    precio:260, costo:160, stock:9,  min:10, control:true,  online:true,  puntos:13, icon:'fa-award' },
-  { id:'P08', nombre:'Combo Degustación',        cat:'Combo',   precio:320, costo:190, stock:15, min:5,  control:true,  online:true,  puntos:16, icon:'fa-box' }
-];
+/* Reinicio desde cero: sin productos de ejemplo. Cree su catálogo real con
+   "Nuevo producto" y publíquelo con "Publicar a Tienda y Tarjeta". */
+let PRODUCTOS = [];
 
 /* ---------- CLIENTES / FIDELIDAD ---------- */
-let CLIENTES = [
-  { id:'C1', nombre:'Ana Torres', tel:'8888-1122', tarjeta:'PG-0001', puntos:120, compras:8, saldo:0, alta:'2026-01-15' },
-  { id:'C2', nombre:'Luis Gómez', tel:'8777-3344', tarjeta:'PG-0002', puntos:60,  compras:4, saldo:250, alta:'2026-03-02' },
-  { id:'C3', nombre:'Rosa Díaz',  tel:'8555-9988', tarjeta:'PG-0003', puntos:200, compras:14,saldo:0, alta:'2026-05-20' },
-  { id:'C4', nombre:'Jorge Mena', tel:'8444-2200', tarjeta:'PG-0004', puntos:35,  compras:3, saldo:120, alta:'2026-09-05' },
-  { id:'C5', nombre:'Karla Soto', tel:'8999-7766', tarjeta:'PG-0005', puntos:90,  compras:6, saldo:0, alta:'2026-09-18' }
-];
+/* Reinicio desde cero: sin clientes de ejemplo. Se llenan con clientes reales
+   que llegan desde la nube (Tienda en Línea / Tarjeta Fidelidad) o del Punto de Venta. */
+let CLIENTES = [];
 
 /* ---------- PEDIDOS (Tienda en Línea + Tarjeta Fidelidad) ---------- */
 /* Sin datos de ejemplo: solo se llena con pedidos reales que llegan desde la nube (Tienda en Línea / Tarjeta Fidelidad). */
 let PEDIDOS = [];
 
 /* ---------- VENTAS / TRANSACCIONES ---------- */
-let VENTAS = [
-  { hora:'07:42', recibo:'V-1042', origen:'Punto de Venta', cliente:'Mostrador', total:360, metodo:'Efectivo' },
-  { hora:'08:15', recibo:'V-1043', origen:'Punto de Venta', cliente:'María Pérez', total:180, metodo:'ACH' },
-  { hora:'09:03', recibo:'V-1044', origen:'Tienda en Línea', cliente:'Pulpería La Esquina', total:900, metodo:'Transferencia' },
-  { hora:'10:20', recibo:'V-1045', origen:'Tarjeta Fidelidad', cliente:'Carlos Ruiz', total:250, metodo:'LaFise' },
-  { hora:'11:48', recibo:'V-1046', origen:'Punto de Venta', cliente:'Mostrador', total:140, metodo:'Efectivo' }
-];
-let TRANSACCIONES = VENTAS.map(v=>({ id:uid('TX-'), recibo:v.recibo, fecha:fechaHora(), metodo:v.metodo, monto:v.total, estado:'Confirmada', origen:v.origen }));
+/* Reinicio desde cero: sin ventas/recibos de ejemplo. Los ingresos se registran
+   únicamente cuando un pedido se ENTREGA (al contado o con abono), o desde el Punto de Venta. */
+let VENTAS = [];
+let TRANSACCIONES = [];
 
 /* ---------- CUPONES ---------- */
 let CUPONES = [
-  { codigo:'CAFE10', tipo:'%', valor:10, desc:'10% en café', activo:true, usos:12 },
-  { codigo:'ENVIOGRATIS', tipo:'C$', valor:20, desc:'Envío gratis Jinotepe', activo:true, usos:5 },
-  { codigo:'FIEL50', tipo:'C$', valor:50, desc:'C$50 por fidelidad', activo:false, usos:20 }
+  { codigo:'CAFE10', tipo:'%', valor:10, desc:'10% en café', activo:true, usos:0 },
+  { codigo:'ENVIOGRATIS', tipo:'C$', valor:20, desc:'Envío gratis Jinotepe', activo:true, usos:0 },
+  { codigo:'FIEL50', tipo:'C$', valor:50, desc:'C$50 por fidelidad', activo:false, usos:0 }
 ];
 
 /* ---------- USUARIOS ---------- */
@@ -284,13 +269,10 @@ let USUARIOS = [
 function saveUsuarios(){ try{ localStorage.setItem('pg_usuarios',JSON.stringify(USUARIOS)); }catch(e){} }
 
 /* ---------- SALIDAS / GASTOS (Finanzas) ---------- */
+/* Reinicio desde cero: sin gastos de ejemplo. Se registran los gastos reales del negocio. */
 const CATEGORIAS_SALIDA=['Alimentación','Alquiler','Compras de Productos y suministros','Gastos administrativos','Gastos de Ventas','Gastos Financieros','Equipamientos','Empleados','Impuestos','Mantenimiento y Reparaciones','Marketing y Publicidad','Transporte y logísticas','Otros'];
 const CAT_ICON={'Alimentación':'fa-utensils','Alquiler':'fa-house','Compras de Productos y suministros':'fa-box','Gastos administrativos':'fa-briefcase','Gastos de Ventas':'fa-cart-shopping','Gastos Financieros':'fa-percent','Equipamientos':'fa-screwdriver-wrench','Empleados':'fa-users','Impuestos':'fa-landmark','Mantenimiento y Reparaciones':'fa-wrench','Marketing y Publicidad':'fa-bullhorn','Transporte y logísticas':'fa-truck','Otros':'fa-ellipsis'};
-let SALIDAS=[
-  { id:'S1', nombre:'Alquiler de local', monto:8000, categoria:'Alquiler', proveedor:'Inmobiliaria León', estado:'pendiente', vence:'2026-09-30', obs:'Mensualidad septiembre', repetir:true },
-  { id:'S2', nombre:'Compra de empaques', monto:2450, categoria:'Compras de Productos y suministros', proveedor:'Empaques del Norte', estado:'pendiente', vence:'2026-09-25', obs:'', repetir:false },
-  { id:'S3', nombre:'Pago de energía eléctrica', monto:1830, categoria:'Gastos administrativos', proveedor:'DISNORTE', estado:'pagado', vence:'2026-09-10', obs:'Recibo agosto', repetir:true }
-];
+let SALIDAS=[];
 (function loadSalidas(){ try{ const s=localStorage.getItem('pg_salidas'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) SALIDAS=a; } }catch(e){} })();
 function saveSalidas(){ try{ localStorage.setItem('pg_salidas',JSON.stringify(SALIDAS)); }catch(e){} }
 let SAL_TAB='pendiente';
@@ -375,7 +357,7 @@ function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('-
 function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toastMsg').textContent=msg; t.classList.remove('hidden'); t.classList.add('flex'); clearTimeout(window._tt); window._tt=setTimeout(()=>{t.classList.add('hidden');t.classList.remove('flex');},2600); }
 function openModal(html){ document.getElementById('modalBody').innerHTML=html; document.getElementById('modal').classList.add('open'); }
 function closeModal(){ document.getElementById('modal').classList.remove('open'); }
-function refrescar(){ if(typeof VISTA==='undefined'||!document.getElementById('view-'+VISTA)) return; if(RENDER[VISTA]) RENDER[VISTA](); }
+function refrescar(){ if(typeof VISTA==='undefined'||!document.getElementById('view-'+VISTA)) return; if(typeof applyEntregas==='function') applyEntregas(); if(RENDER[VISTA]) RENDER[VISTA](); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 
@@ -473,23 +455,17 @@ function confirmarEntrega(r){
   const modo=(document.querySelector('input[name=entModo]:checked')||{}).value||'contado';
   const sh=+p.ship||0, total=Math.max(0,(+p.total||0)), idx=PEDIDOS.indexOf(p);
   if(modo==='contado'){
-    VENTAS.unshift({hora:hora(),recibo:p.recibo,origen:p.origen,cliente:p.cliente,total:total,metodo:'Contado',sub:Math.max(0,total-sh),ship:sh,desc:0});
-    TRANSACCIONES.unshift({id:uid('TX-'),recibo:p.recibo,fecha:fechaHora(),metodo:'Contado',monto:total,estado:'Confirmada',origen:p.origen});
+    registrarEntrega({recibo:p.recibo,modo:'contado',total:total,abono:total,saldo:0,cliente:p.cliente,tel:p.tel||'',origen:p.origen,metodo:'Contado',ship:sh,fecha:fechaHora()});
     if(idx>=0) PEDIDOS.splice(idx,1);
-    if(typeof DELIVERED_ONLINE!=='undefined') DELIVERED_ONLINE[r]=true;
     closeModal(); refrescar(); toast('Pedido '+r+' entregado al contado');
   } else {
     let abono=parseFloat((document.getElementById('entAbono')||{}).value)||0;
     abono=Math.max(0,Math.min(abono,total));
     const saldo=+(total-abono).toFixed(2);
-    if(abono>0){
-      VENTAS.unshift({hora:hora(),recibo:p.recibo,origen:p.origen,cliente:p.cliente,total:abono,metodo:'Abono (cr\u00e9dito)',sub:abono,ship:0,desc:0});
-      TRANSACCIONES.unshift({id:uid('TX-'),recibo:p.recibo,fecha:fechaHora(),metodo:'Abono',monto:abono,estado:'Confirmada',origen:'Cuenta por cobrar'});
-    }
-    if(saldo>0){ const c=CLIENTES.find(x=>x.nombre===p.cliente); if(c){ c.saldo=(+c.saldo||0)+saldo; } }
+    registrarEntrega({recibo:p.recibo,modo:'credito',total:total,abono:abono,saldo:saldo,cliente:p.cliente,tel:p.tel||'',origen:p.origen,metodo:'Cr\u00e9dito',ship:sh,fecha:fechaHora()});
     if(idx>=0) PEDIDOS.splice(idx,1);
-    if(typeof DELIVERED_ONLINE!=='undefined') DELIVERED_ONLINE[r]=true;
     closeModal(); refrescar(); toast('Pedido '+r+' entregado a cr\u00e9dito \u00b7 saldo '+money(saldo)+' a CxC');
+    if(abono>0){ abrirRecibo({docTipo:'Recibo',recibo:'AB-'+p.recibo,tipo:'Abono a factura de cr\u00e9dito '+p.recibo,cliente:p.cliente,tel:p.tel||'',fecha:fechaHora(),metodo:'Abono',lineas:[{desc:'Abono a factura '+p.recibo,cant:1,precio:abono}],subtotal:abono,ship:0,total:abono,saldoPendiente:saldo}); }
   }
 }
 
@@ -669,12 +645,13 @@ RENDER.catalogo = function(){
     <span class="text-[11px] text-pg-muted mr-1"><i class="fa-solid fa-cloud text-pg-gold"></i> Inventario compartido con la Tienda en Línea y la Tarjeta de Fidelidad</span>
     <button onclick="syncPull()" class="text-xs px-3 py-1.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white font-semibold"><i class="fa-solid fa-cloud-arrow-down mr-1"></i> Traer de la nube</button>
     <button onclick="syncPush()" class="text-xs px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-cloud-arrow-up mr-1"></i> Publicar a Tienda y Tarjeta</button>
+    <button onclick="resetTodo()" class="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"><i class="fa-solid fa-trash-can-arrow-up mr-1"></i> Reiniciar desde cero</button>
     <span id="syncStatus" class="text-[11px] text-pg-muted ml-auto">${SYNC_MSG}</span>
   <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">${cards}</div>`;
 };
 const ICONS=['fa-mug-hot','fa-seedling','fa-wheat-awn','fa-bowl-rice','fa-worm','fa-leaf','fa-award','fa-box','fa-jar','fa-bottle-water'];
 let FIMG='';
-let SYNC_MSG='Modo local (datos de prueba)';
+let SYNC_MSG='Conectando con la nube…';
 function formProducto(p){
   const isNew=!p;
   p=p||{id:'',nombre:'',cat:'Café',precio:'',costo:'',stock:'',min:'',control:true,online:true,puntos:'',icon:'fa-box',imagen:''};
@@ -798,6 +775,29 @@ async function syncPush(){
   }catch(e){ toast('No se pudo publicar'); setSyncMsg('<span class="text-red-600">Error al publicar</span>'); }
 }
 
+/* Reinicia TODO desde cero: borra los datos de prueba de la nube (Firebase) y del navegador.
+   Es una acci\u00f3n destructiva y afecta tambi\u00e9n a la Tienda en L\u00ednea y la Tarjeta de Fidelidad. */
+async function resetTodo(){
+  if(!confirm('\u26a0\ufe0f Esto BORRAR\u00c1 todos los datos (productos, clientes, pedidos, ventas, transacciones y cuentas por cobrar) tanto de este panel como de la Tienda en L\u00ednea y la Tarjeta de Fidelidad. Esta acci\u00f3n NO se puede deshacer. \u00bfContinuar?')) return;
+  if(!confirm('\u00daltima confirmaci\u00f3n: el negocio quedar\u00e1 COMPLETAMENTE VAC\u00cdO (desde cero). \u00bfSeguro que desea borrar todo?')) return;
+  setSyncMsg('Reiniciando desde cero\u2026');
+  /* 1) Borrar los nodos de datos en Firebase */
+  if(window.PGSync&&window.PGSync.ok&&window.PGSync.removeAt){
+    const nodos=['productos','clientes','transacciones','compras_registro','cuentas_por_cobrar','meta','secuencia_recibos'];
+    for(const n of nodos){ try{ await window.PGSync.removeAt(n); }catch(e){} }
+  }
+  /* 2) Limpiar los datos guardados localmente en el navegador */
+  try{
+    ENTREGAS={}; DELIVERED_ONLINE={}; saveEntregas();
+    ['PG_ENTREGAS_V1','pg_salidas','pg_usuarios'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+  }catch(e){}
+  /* 3) Vaciar los arreglos en memoria */
+  PRODUCTOS=[]; CLIENTES=[]; PEDIDOS=[]; VENTAS=[]; TRANSACCIONES=[]; SALIDAS=[]; CART=[];
+  CLOUD={ productos:{}, clientes:{}, transacciones:{}, compras:{}, cxc:{} };
+  toast('Todo reiniciado. Recargando\u2026');
+  setTimeout(()=>{ location.reload(); }, 900);
+}
+
 
 /* === app2_5b.js === */
 
@@ -808,7 +808,33 @@ async function syncPush(){
    ============================================================ */
 let CLOUD={ productos:{}, clientes:{}, transacciones:{}, compras:{}, cxc:{} };
 let CLOUD_ON=false;
-let DELIVERED_ONLINE={};
+let DELIVERED_ONLINE={};   /* recibo -> true (compatibilidad) */
+let ENTREGAS={};           /* recibo -> {recibo,modo,total,abono,saldo,cliente,tel,origen,metodo,ship,fecha} */
+(function loadEntregas(){ try{ const s=localStorage.getItem('PG_ENTREGAS_V1'); if(s){ const o=JSON.parse(s); if(o&&typeof o==='object'){ ENTREGAS=o; Object.keys(ENTREGAS).forEach(k=>{ DELIVERED_ONLINE[k]=true; }); } } }catch(e){} })();
+function saveEntregas(){ try{ localStorage.setItem('PG_ENTREGAS_V1',JSON.stringify(ENTREGAS)); }catch(e){} }
+function registrarEntrega(rec){ if(!rec||!rec.recibo)return; ENTREGAS[rec.recibo]=rec; DELIVERED_ONLINE[rec.recibo]=true; saveEntregas(); }
+function saldoEntregasCliente(nombre){ let s=0; Object.values(ENTREGAS).forEach(r=>{ if(r&&r.modo==='credito'&&r.cliente===nombre) s+=(+r.saldo||0); }); return +s.toFixed(2); }
+/* Recalcula (idempotente) los efectos de las entregas: retira los pedidos entregados
+   de Inicio/Pedidos, deriva los ingresos (contado y abonos) y suma el saldo de crédito a CxC. */
+function applyEntregas(){
+  PEDIDOS = PEDIDOS.filter(p=>!ENTREGAS[p.recibo]);
+  VENTAS = VENTAS.filter(v=>!v.deliv);
+  TRANSACCIONES = TRANSACCIONES.filter(t=>!t.deliv);
+  Object.values(ENTREGAS).forEach(r=>{
+    if(!r) return;
+    const hh=(String(r.fecha||'').split(',').pop()||'').trim()||hora();
+    if(r.modo==='contado'){
+      VENTAS.unshift({ deliv:true, hora:hh, recibo:r.recibo, origen:r.origen||'Pedido', cliente:r.cliente||'', total:+r.total||0, metodo:r.metodo||'Contado', sub:Math.max(0,(+r.total||0)-(+r.ship||0)), ship:+r.ship||0, desc:0 });
+      TRANSACCIONES.unshift({ deliv:true, id:'TXE-'+r.recibo, recibo:r.recibo, fecha:r.fecha||fechaHora(), metodo:r.metodo||'Contado', monto:+r.total||0, estado:'Confirmada', origen:r.origen||'Pedido' });
+    } else if((+r.abono||0)>0){
+      VENTAS.unshift({ deliv:true, hora:hh, recibo:r.recibo, origen:r.origen||'Pedido', cliente:r.cliente||'', total:+r.abono||0, metodo:'Abono (cr\u00e9dito)', sub:+r.abono||0, ship:0, desc:0 });
+      TRANSACCIONES.unshift({ deliv:true, id:'TXE-'+r.recibo, recibo:r.recibo, fecha:r.fecha||fechaHora(), metodo:'Abono', monto:+r.abono||0, estado:'Confirmada', origen:'Cuenta por cobrar' });
+    }
+  });
+  /* asegura que exista el cliente con saldo de crédito pendiente */
+  Object.values(ENTREGAS).forEach(r=>{ if(r&&r.modo==='credito'&&(+r.saldo||0)>0&&r.cliente){ if(!CLIENTES.find(c=>c.nombre===r.cliente)){ CLIENTES.push({ id:'CE-'+r.recibo, nombre:r.cliente, tel:r.tel||'', tarjeta:'', puntos:0, compras:0, saldo:0, alta:'' }); } } });
+  CLIENTES.forEach(c=>{ const base=(c._saldoCloud!=null)?+c._saldoCloud:0; c.saldo=+(base+saldoEntregasCliente(c.nombre)).toFixed(2); });
+}
 
 function cloudClientCode(tel){ const d=String(tel||'').replace(/\D/g,''); return 'PG-'+((d.slice(-4)||'0000').padStart(4,'0')); }
 
@@ -833,7 +859,7 @@ function mergeCloudCxc(data){
   CLOUD.cxc=data||{};
   const byTel={};
   Object.values(CLOUD.cxc).forEach(x=>{ if(!x)return; const tel=x.whatsapp_cliente; if(!tel)return; byTel[tel]=(byTel[tel]||0)+(+x.saldo_pendiente||0); });
-  Object.keys(byTel).forEach(tel=>{ let ex=CLIENTES.find(x=>x.cloudKey===tel||x.tel===tel); if(ex){ ex.saldo=byTel[tel]; } });
+  Object.keys(byTel).forEach(tel=>{ let ex=CLIENTES.find(x=>x.cloudKey===tel||x.tel===tel); if(ex){ ex._saldoCloud=byTel[tel]; ex.saldo=+(byTel[tel]+saldoEntregasCliente(ex.nombre)).toFixed(2); } });
 }
 
 function resolveItems(itemsRaw){
@@ -858,12 +884,10 @@ function rebuildCloudRecibos(){
   VENTAS=VENTAS.filter(v=>!v.cloud);
   TRANSACCIONES=TRANSACCIONES.filter(t=>!t.cloud);
   list.forEach(m=>{
+    if(DELIVERED_ONLINE[m.recibo]) return; /* ya entregado: no reaparece en Inicio ni en Pedidos */
     const pago=m.credito?'Cr\u00e9dito':(m.estado_pago==='pendiente'?'Pendiente':'Pagado');
-    const metodo=m.metodo||'Transferencia';
-    const entregado=!!DELIVERED_ONLINE[m.recibo];
-    PEDIDOS.unshift({ cloud:true, recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', tel:m.tel||'', items:m.items||[], total:+m.total||0, ship:+m.ship||0, descMonto:(m.descMonto!=null?+m.descMonto:null), descTipo:m.descTipo||'', estado:entregado?'Entregado':'Pendiente', pago, fecha:m.fecha||'' });
-    VENTAS.unshift({ cloud:true, hora:String(m.fecha||'').split(',').pop().trim(), recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', total:+m.total||0, ship:+m.ship||0, metodo });
-    TRANSACCIONES.unshift({ cloud:true, id:'TX-'+m.recibo, recibo:m.recibo, fecha:m.fecha||'', metodo, monto:+m.total||0, estado:(pago==='Pagado'?'Confirmada':'Pendiente'), origen:m.origen||'Tienda en Linea' });
+    PEDIDOS.unshift({ cloud:true, recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', tel:m.tel||'', items:m.items||[], total:+m.total||0, ship:+m.ship||0, descMonto:(m.descMonto!=null?+m.descMonto:null), descTipo:m.descTipo||'', estado:'Pendiente', pago, fecha:m.fecha||'' });
+    /* El ingreso NO se registra al llegar el pedido: se registra al ENTREGARLO (contado o abono). */
   });
 }
 
@@ -922,7 +946,7 @@ function simularPedidoOnline(){
   if(!online.length){ toast('No hay productos publicados con stock'); return; }
   const p1=online[Math.floor(Math.random()*online.length)];
   const q=1+Math.floor(Math.random()*3);
-  const cli=CLIENTES[Math.floor(Math.random()*CLIENTES.length)];
+  const cli=CLIENTES.length?CLIENTES[Math.floor(Math.random()*CLIENTES.length)]:{nombre:'Cliente en línea'};
   const origen=Math.random()<0.5?'Tienda en Línea':'Tarjeta Fidelidad';
   const nro='R-'+(2055+PEDIDOS.length+1);
   PEDIDOS.unshift({recibo:nro,origen,cliente:cli.nombre,items:[{n:p1.nombre,q,precio:p1.precio}],total:p1.precio*q,estado:'Pendiente',pago:origen==='Tarjeta Fidelidad'?'Crédito':'Pagado',fecha:fechaHora()});
@@ -1139,7 +1163,7 @@ function reciboHTML(d){
   const logoTag=(typeof LOGO_GOLD!=='undefined'&&LOGO_GOLD)?`<img src="${LOGO_GOLD}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;margin-bottom:6px">`:`<div class="lg">&#127793;<\/div>`;
   const cliBlock=`<div class="cli"><b>Cliente:<\/b> ${d.cliente||'Mostrador'}${d.tel?'<br><b>Tel:<\/b> '+d.tel:''}${d.dir?'<br><b>Dirección:<\/b> '+d.dir:''}<\/div>`;
   const convNota=d.convenir?`<p style="text-align:center;color:#a9781f;font-size:10px;margin:6px 0 0">* Costo de envío a convenir con el cliente<\/p>`:'';
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Recibo ${d.recibo}</title>
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${d.docTipo||'Factura'} ${d.recibo}</title>
   <script src="vendor/qrcode.min.js"><\/script>
   <style>*{box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}body{margin:0;background:#f4f4f0;color:#2c2c2c}
   .r{max-width:360px;margin:20px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 22px rgba(27,56,43,.15)}
@@ -1149,10 +1173,11 @@ function reciboHTML(d){
   .pay{background:#f4f4f0;border-radius:10px;padding:10px;margin-top:10px;font-size:11px;line-height:1.5}.qr{display:flex;justify-content:center;margin:12px 0}.ft{text-align:center;font-size:10px;color:#6b7c68;padding:0 20px 16px}.noprint{text-align:center;margin:14px}.btn{background:#c8963e;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px}
   @media print{.noprint{display:none}body{background:#fff}.r{box-shadow:none;margin:0}}<\/style></head><body>
   <div class="r"><div class="hd">${logoTag}<h1>${EMPRESA.nombre}<\/h1><p>${EMPRESA.lema} · ${EMPRESA.lugar}<\/p><p>RUC ${EMPRESA.ruc} · Régimen ${EMPRESA.regimen}<\/p><\/div>
-  <div class="bd"><div class="meta"><span><b>Recibo:<\/b> ${d.recibo}<\/span><span>${d.fecha}<\/span><\/div><div class="meta"><span><b>Tipo:<\/b> ${d.tipo}<\/span><\/div>
+  <div class="bd"><div class="meta"><span><b>${d.docTipo||'Factura'}:<\/b> ${d.recibo}<\/span><span>${d.fecha}<\/span><\/div><div class="meta"><span><b>Tipo:<\/b> ${d.tipo}<\/span><\/div>
     ${cliBlock}
     <table><thead><tr><td>Descripción<\/td><td style="text-align:center">Cant<\/td><td style="text-align:right">P.U.<\/td><td style="text-align:right">Total<\/td><\/tr><\/thead><tbody>${filas}<\/tbody><tbody style="border-top:1px solid #e2e8e0">${breakdown}<\/tbody><tfoot><tr><td colspan="3">TOTAL<\/td><td style="text-align:right">${money(d.total)}<\/td><\/tr><\/tfoot><\/table>
     ${convNota}
+    ${(d.saldoPendiente!=null&&+d.saldoPendiente>0)?`<div class="meta"><span><b>Saldo pendiente:<\/b> ${money(d.saldoPendiente)}<\/span><\/div>`:''}
     <div class="meta"><span><b>Método de pago:<\/b> ${d.metodo||'Transferencia'}<\/span><\/div>
     <div class="pay"><b>Pago vía ${EMPRESA.banco}<\/b><br>Cuenta N° <b>${EMPRESA.cuenta}<\/b><br>ACH alias <b>${EMPRESA.ach}<\/b><br>WhatsApp <b>+505 ${EMPRESA.whatsapp}<\/b><\/div>
     <div class="qr"><div id="rqr"><\/div><\/div><p style="text-align:center;color:#6b7c68;font-size:10px;margin:0">Escanee el QR con los datos de pago<\/p><\/div>
@@ -1486,7 +1511,14 @@ RENDER.cxc = function(){
     <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-pg-cream text-pg-muted text-[11px] uppercase"><tr><th class="px-3 py-2 text-left">Cliente</th><th class="px-3 py-2 text-left">Tarjeta</th><th class="px-3 py-2 text-left">Teléfono</th><th class="px-3 py-2 text-right">Saldo</th><th class="px-3 py-2 text-center">Acción</th></tr></thead><tbody>${rows||'<tr><td colspan=5 class="text-center py-6 text-pg-muted">Sin cuentas por cobrar</td></tr>'}</tbody></table></div>
   </div>`;
 };
-function abonar(id){ const c=CLIENTES.find(x=>x.id===id); if(!c)return; const v=parseFloat(prompt('Monto del abono (C$) para '+c.nombre+'. Saldo actual: '+money(c.saldo),c.saldo)); if(!v||v<=0)return; c.saldo=Math.max(0,c.saldo-v); TRANSACCIONES.unshift({id:uid('TX-'),recibo:'ABONO',fecha:fechaHora(),metodo:'Abono',monto:v,estado:'Confirmada',origen:'Cuenta por cobrar'}); refrescar(); toast('Abono de '+money(v)+' registrado'); }
+function abonar(id){ const c=CLIENTES.find(x=>x.id===id); if(!c)return; const v=parseFloat(prompt('Monto del abono (C$) para '+c.nombre+'. Saldo actual: '+money(c.saldo),c.saldo)); if(!v||v<=0)return;
+  let rest=v;
+  /* Aplica el abono contra las entregas a cr\u00e9dito del cliente (reduce su saldo pendiente y suma el ingreso). */
+  Object.values(ENTREGAS).forEach(r=>{ if(rest<=0)return; if(r&&r.modo==='credito'&&r.cliente===c.nombre&&(+r.saldo||0)>0){ const pay=Math.min(rest,+r.saldo); r.saldo=+(r.saldo-pay).toFixed(2); r.abono=+((+r.abono||0)+pay).toFixed(2); rest=+(rest-pay).toFixed(2); } });
+  saveEntregas();
+  const saldoFinal=Math.max(0,+(c.saldo-v).toFixed(2));
+  refrescar(); toast('Abono de '+money(v)+' registrado');
+  abrirRecibo({docTipo:'Recibo',recibo:'AB-'+Date.now().toString().slice(-6),tipo:'Abono a cuenta por cobrar',cliente:c.nombre,tel:c.tel||'',fecha:fechaHora(),metodo:'Abono',lineas:[{desc:'Abono a cuenta de '+c.nombre,cant:1,precio:v}],subtotal:v,ship:0,total:v,saldoPendiente:saldoFinal}); }
 
 
 /* === app2_8.js === */
@@ -1706,12 +1738,11 @@ document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id===
   }catch(e){}
 })();
 
-/* ---- Siembra automática del catálogo a la nube (Tienda + Tarjeta) si está vacía ---- */
-(function seedCloud(){ let tries=0; (function t(){
-  if(window.PGSync&&window.PGSync.ok&&window.PGSync.seedIfEmpty){
-    try{ const obj={}; PRODUCTOS.forEach(p=>obj[p.id]=prodToCloud(p)); window.PGSync.seedIfEmpty(obj); }catch(e){}
-  } else if(tries++<20){ setTimeout(t,300); }
-})(); })();
+/* ---- Reinicio desde cero: se DESACTIVA la siembra automática del catálogo demo.
+       El catálogo se llena solo con los productos reales que el usuario cree o publique
+       manualmente (botón "Publicar a Tienda y Tarjeta"). Así el sistema nunca vuelve a
+       cargar datos de ejemplo por su cuenta. ---- */
+(function seedCloud(){ /* desactivado a propósito para iniciar desde cero */ })();
 
 
 /* === app2_10.js — INGRESOS + PROMOCIONES (iteración 6) === */
