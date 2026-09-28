@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel Administrativo — PG del Campo</title>
 <meta name="theme-color" content="#1b382b">
-
-<link href="vendor/fonts/fonts.css" rel="stylesheet">
-<link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
-<script src="vendor/tailwind.js"></script>
-<script src="vendor/chart.umd.min.js"></script>
-<script src="vendor/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
   tailwind.config = { theme: { extend: {
     colors: { pg: {
@@ -143,31 +144,23 @@ const EMPRESA = {
 };
 const PAGO = EMPRESA;
 
-/* ---------- TIPOS DE ENVÍO (editables) ---------- */
+/* ---------- TIPOS DE ENVÍO ---------- */
 const ZONAS_DOMICILIO = ['Jinotepe','Dolores','Diriamba','San Marcos'];
-const ENVIOS_DEFAULT = [
+const ENVIOS = [
   { id:'domicilio',    nombre:'A domicilio (zonas locales)', costo:20, convenir:true,  ir:false, nota:'Jinotepe, Dolores, Diriamba y San Marcos: C$20.00. En el resto de lugares, a convenir con el cliente.' },
   { id:'comercios',    nombre:'Comercios y Distribuidores',  costo:0,  convenir:false, ir:false, nota:'Envío gratis.' },
   { id:'instituciones',nombre:'Empresas e Instituciones',    costo:20, convenir:false, ir:true,  nota:'C$20.00. En compras mayores a C$1,000.00 se retiene el 2% de I.R.' }
 ];
-let ENVIOS = (function(){ try{ const s=localStorage.getItem('pg_envios'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)&&a.length) return a; } }catch(e){} return JSON.parse(JSON.stringify(ENVIOS_DEFAULT)); })();
-function saveEnvios(){ try{ localStorage.setItem('pg_envios',JSON.stringify(ENVIOS)); }catch(e){} }
 function envioById(id){ return ENVIOS.find(e=>e.id===id)||ENVIOS[0]; }
 
-/* ---------- PROMOCIONES (reglas del negocio, editables) ----------
-   - Descuento por monto de compra: configurable por tramos (min → %)
-   - Premio de fidelidad: % adicional en cada N.ª compra del cliente
-   - Puntos: cada cierto monto de compra otorga un número de puntos
+/* ---------- PROMOCIONES (reglas del negocio) ----------
+   - Descuento por monto de compra: 1% > C$600, 2% > C$1,200, 3% > C$1,800
+   - Premio de fidelidad: 2% adicional en cada 10.ª compra del cliente
    ------------------------------------------------------------ */
-const PROMOS_DEFAULT = {
+const PROMOS = {
   montos:[ {min:1800,pct:3}, {min:1200,pct:2}, {min:600,pct:1} ],
-  decima:{ cada:10, pct:2 },
-  puntos:{ cada:20, pts:1 }
+  decima:{ cada:10, pct:2 }
 };
-let PROMOS = (function(){ try{ const s=localStorage.getItem('pg_promos'); if(s){ const o=JSON.parse(s); if(o&&Array.isArray(o.montos)&&o.decima){ if(!o.puntos) o.puntos={cada:20,pts:1}; return o; } } }catch(e){} return JSON.parse(JSON.stringify(PROMOS_DEFAULT)); })();
-function savePromos(){ try{ localStorage.setItem('pg_promos',JSON.stringify(PROMOS)); }catch(e){} }
-/* Puntos otorgados según el monto de la compra (regla configurable) */
-function puntosPorMonto(sub){ const r=PROMOS.puntos||{cada:20,pts:1}; const cada=+r.cada||0, pts=+r.pts||0; if(cada<=0||pts<=0) return 0; return Math.floor((+sub||0)/cada)*pts; }
 function promoMonto(sub){ for(const t of PROMOS.montos){ if((+sub||0)>=t.min) return t; } return null; }
 /* comprasPrevias = compras ya realizadas por el cliente (antes de ésta) */
 function esDecimaCompra(comprasPrevias){ const n=(+comprasPrevias||0)+1; return n>0 && n%PROMOS.decima.cada===0; }
@@ -254,8 +247,13 @@ let CLIENTES = [
 ];
 
 /* ---------- PEDIDOS (Tienda en Línea + Tarjeta Fidelidad) ---------- */
-/* Sin datos de ejemplo: solo se llena con pedidos reales que llegan desde la nube (Tienda en Línea / Tarjeta Fidelidad). */
-let PEDIDOS = [];
+let PEDIDOS = [
+  { recibo:'R-2051', origen:'Tienda en Línea',  cliente:'Ana Torres', items:[{n:'Café Molido Premium 1lb',q:2,precio:180},{n:'Pinolillo Tradicional 1lb',q:1,precio:90}], total:450, estado:'Pendiente',  pago:'Pendiente', fecha:'19/09 08:30' },
+  { recibo:'R-2052', origen:'Tarjeta Fidelidad', cliente:'Luis Gómez', items:[{n:'Humus de Lombriz 5kg',q:1,precio:250}], total:250, estado:'Pendiente',  pago:'Crédito', fecha:'19/09 09:10' },
+  { recibo:'R-2053', origen:'Tienda en Línea',  cliente:'Rosa Díaz', items:[{n:'Pinol Puro 1lb',q:3,precio:70}], total:210, estado:'Preparando', pago:'Pagado', fecha:'19/09 09:55' },
+  { recibo:'R-2054', origen:'Tarjeta Fidelidad', cliente:'Jorge Mena', items:[{n:'Café Oro Especial 1lb',q:1,precio:260},{n:'Humus de Lombriz 1kg',q:2,precio:80}], total:420, estado:'Pendiente', pago:'Crédito', fecha:'19/09 10:40' },
+  { recibo:'R-2055', origen:'Tienda en Línea',  cliente:'Karla Soto', items:[{n:'Combo Degustación',q:1,precio:320}], total:320, estado:'Pendiente', pago:'Pagado', fecha:'19/09 11:25' }
+];
 
 /* ---------- VENTAS / TRANSACCIONES ---------- */
 let VENTAS = [
@@ -444,54 +442,7 @@ RENDER.inicio = function(){
   setTimeout(drawDonut,60);
 };
 function drawDonut(){ const el=document.getElementById('donutStock'); if(!el||!window.Chart) return; const c=stockCounts(); if(_donut)_donut.destroy(); _donut=new Chart(el,{type:'doughnut',data:{labels:['Disponibilidad','Mínimo','Agotados','Sin control'],datasets:[{data:[c.disponible,c.minimo,c.agotado,c.sincontrol],backgroundColor:['#8eb057','#c8963e','#c0392b','#9aa0a6'],borderWidth:2,borderColor:'#fff'}]},options:{cutout:'62%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:true}}); }
-function entregarPedido(r){
-  const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return;
-  const sh=+p.ship||0, total=Math.max(0,(+p.total||0));
-  openModal(`<div class="p-5">
-    <div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-truck-fast text-pg-gold mr-2"></i>Entregar pedido ${p.recibo}</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="rounded-xl bg-pg-cream/60 p-4 mb-4 text-sm">
-      <div class="flex justify-between"><span class="text-pg-muted">Cliente</span><b>${esc(p.cliente)}</b></div>
-      <div class="flex justify-between mt-1"><span class="text-pg-muted">Total del pedido</span><b class="text-pg-green">${money(total)}</b></div>
-      ${sh>0?`<div class="flex justify-between mt-1"><span class="text-pg-muted">Incluye env\u00edo</span><span>${money(sh)}</span></div>`:''}
-    </div>
-    <p class="text-[12px] text-pg-muted mb-2">Seleccione la forma de entrega:</p>
-    <div class="space-y-2">
-      <label class="flex items-center gap-2 p-3 rounded-lg border border-gray-200 cursor-pointer hover:border-pg-gold"><input type="radio" name="entModo" value="contado" checked onchange="_entToggle()"><span class="text-sm font-semibold text-pg-green"><i class="fa-solid fa-money-bill-wave text-pg-leaf mr-1"></i>Entregado al contado</span><span class="text-[11px] text-pg-muted ml-auto">Ingresa a Ingresos</span></label>
-      <label class="flex items-center gap-2 p-3 rounded-lg border border-gray-200 cursor-pointer hover:border-pg-gold"><input type="radio" name="entModo" value="credito" onchange="_entToggle()"><span class="text-sm font-semibold text-pg-green"><i class="fa-solid fa-hand-holding-dollar text-pg-gold2 mr-1"></i>Entregado a cr\u00e9dito</span><span class="text-[11px] text-pg-muted ml-auto">Pasa a Cuentas por Cobrar</span></label>
-    </div>
-    <div id="entAbonoBox" class="mt-3 hidden">
-      <label class="text-xs font-semibold">Abono inicial (C$)</label>
-      <input id="entAbono" type="number" min="0" max="${total}" value="0" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-pg-gold">
-      <p class="text-[11px] text-pg-muted mt-1">El abono ingresa a Ingresos; el saldo restante queda en Cuentas por Cobrar del cliente.</p>
-    </div>
-    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="confirmarEntrega('${p.recibo}')" class="flex-1 py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold">Confirmar entrega</button></div>
-  </div>`);
-}
-function _entToggle(){ const m=document.querySelector('input[name=entModo]:checked'); const box=document.getElementById('entAbonoBox'); if(box) box.classList.toggle('hidden', !(m&&m.value==='credito')); }
-function confirmarEntrega(r){
-  const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return;
-  const modo=(document.querySelector('input[name=entModo]:checked')||{}).value||'contado';
-  const sh=+p.ship||0, total=Math.max(0,(+p.total||0)), idx=PEDIDOS.indexOf(p);
-  if(modo==='contado'){
-    VENTAS.unshift({hora:hora(),recibo:p.recibo,origen:p.origen,cliente:p.cliente,total:total,metodo:'Contado',sub:Math.max(0,total-sh),ship:sh,desc:0});
-    TRANSACCIONES.unshift({id:uid('TX-'),recibo:p.recibo,fecha:fechaHora(),metodo:'Contado',monto:total,estado:'Confirmada',origen:p.origen});
-    if(idx>=0) PEDIDOS.splice(idx,1);
-    if(typeof DELIVERED_ONLINE!=='undefined') DELIVERED_ONLINE[r]=true;
-    closeModal(); refrescar(); toast('Pedido '+r+' entregado al contado');
-  } else {
-    let abono=parseFloat((document.getElementById('entAbono')||{}).value)||0;
-    abono=Math.max(0,Math.min(abono,total));
-    const saldo=+(total-abono).toFixed(2);
-    if(abono>0){
-      VENTAS.unshift({hora:hora(),recibo:p.recibo,origen:p.origen,cliente:p.cliente,total:abono,metodo:'Abono (cr\u00e9dito)',sub:abono,ship:0,desc:0});
-      TRANSACCIONES.unshift({id:uid('TX-'),recibo:p.recibo,fecha:fechaHora(),metodo:'Abono',monto:abono,estado:'Confirmada',origen:'Cuenta por cobrar'});
-    }
-    if(saldo>0){ const c=CLIENTES.find(x=>x.nombre===p.cliente); if(c){ c.saldo=(+c.saldo||0)+saldo; } }
-    if(idx>=0) PEDIDOS.splice(idx,1);
-    if(typeof DELIVERED_ONLINE!=='undefined') DELIVERED_ONLINE[r]=true;
-    closeModal(); refrescar(); toast('Pedido '+r+' entregado a cr\u00e9dito \u00b7 saldo '+money(saldo)+' a CxC');
-  }
-}
+function entregarPedido(r){ const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return; p.estado='Entregado'; if(typeof DELIVERED_ONLINE!=='undefined') DELIVERED_ONLINE[r]=true; refrescar(); toast('Pedido '+r+' entregado'); }
 
 
 /* === app2_4.js === */
@@ -511,7 +462,7 @@ function posCalc(){
   const fiel=POS_FIEL?Math.round((sub-desc)*0.05):0;
   const irRet=(env.ir&&sub>1000)?+((sub)*0.02).toFixed(2):0;
   const total=Math.max(0,sub-desc-promo.total-fiel+ship-irRet);
-  const puntos=puntosPorMonto(sub);
+  const puntos=puntosDeItems(CART);
   return {sub,ship,desc,promo,fiel,irRet,total,env,cli,puntos};
 }
 RENDER.vender = function(){
@@ -1140,7 +1091,7 @@ function reciboHTML(d){
   const cliBlock=`<div class="cli"><b>Cliente:<\/b> ${d.cliente||'Mostrador'}${d.tel?'<br><b>Tel:<\/b> '+d.tel:''}${d.dir?'<br><b>Dirección:<\/b> '+d.dir:''}<\/div>`;
   const convNota=d.convenir?`<p style="text-align:center;color:#a9781f;font-size:10px;margin:6px 0 0">* Costo de envío a convenir con el cliente<\/p>`:'';
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Recibo ${d.recibo}</title>
-  <script src="vendor/qrcode.min.js"><\/script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
   <style>*{box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}body{margin:0;background:#f4f4f0;color:#2c2c2c}
   .r{max-width:360px;margin:20px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 22px rgba(27,56,43,.15)}
   .hd{background:#1b382b;color:#fff;padding:18px 20px;text-align:center}.hd .lg{width:44px;height:44px;border-radius:50%;background:#c8963e;color:#1b382b;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:6px}.hd h1{margin:0;font-size:16px}.hd p{margin:2px 0 0;font-size:11px;opacity:.85}
@@ -1175,11 +1126,7 @@ function reciboPedido(r){ const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return;
   abrirRecibo({recibo:p.recibo,tipo:p.origen,cliente:p.cliente,tel:p.tel||'',fecha:p.fecha,
     metodo:p.pago==='Crédito'?'Crédito (Fidelidad)':'Transferencia LaFise',
     lineas, subtotal: subItems>0?subItems:p.total, descGen, descTipos, ship, envioNom:ship>0?'Envío a domicilio':'', total:p.total}); }
-function reciboVenta(r){ const v=VENTAS.find(x=>x.recibo===r); if(!v)return;
-  const ship=+v.ship||0, desc=+v.desc||0;
-  const sub=(v.sub!=null)?+v.sub:Math.max(0,(+v.total||0)-ship+desc);
-  abrirRecibo({recibo:v.recibo,tipo:v.origen,cliente:v.cliente,fecha:fechaHora(),metodo:v.metodo,
-    lineas:[{desc:'Venta registrada',cant:1,precio:sub}], subtotal:sub, descGen:desc, descTipos:desc>0?['Descuento aplicado']:[], ship, envioNom:ship>0?'Env\u00edo':'', total:v.total}); }
+function reciboVenta(r){ const v=VENTAS.find(x=>x.recibo===r); if(!v)return; abrirRecibo({recibo:v.recibo,tipo:v.origen,cliente:v.cliente,fecha:fechaHora(),metodo:v.metodo,lineas:[{desc:'Venta registrada',cant:1,precio:v.total}],total:v.total}); }
 
 /* ============================================================
    FINANZAS
@@ -1725,6 +1672,7 @@ function _ventasPOS(){ return VENTAS.filter(v=>!v.cloud); }
 function ingresosDesglose(){
   let ventasProd=0, envios=0, otros=0;
   _ventasPOS().forEach(v=>{ const sh=+v.ship||0; envios+=sh; ventasProd+=Math.max(0,(+v.total||0)-sh); });
+  PEDIDOS.forEach(p=>{ const sh=+p.ship||0; envios+=sh; ventasProd+=Math.max(0,(+p.total||0)-sh); });
   TRANSACCIONES.forEach(t=>{ const o=(t.origen||'').toLowerCase(), me=(t.metodo||'').toLowerCase(); if(o.includes('cobrar')||me.includes('abono')) otros+=+t.monto||0; });
   return { ventasProd:+ventasProd.toFixed(2), envios:+envios.toFixed(2), otros:+otros.toFixed(2), total:+(ventasProd+envios+otros).toFixed(2) };
 }
@@ -1732,7 +1680,8 @@ let _pieIng;
 RENDER.ingresos = function(){
   const d=ingresosDesglose();
   const filas=[];
-  _ventasPOS().forEach(v=>{ const sh=+v.ship||0; filas.push({rec:v.recibo,ori:v.origen||'Punto de Venta',cli:v.cliente,venta:Math.max(0,(+v.total||0)-sh),env:sh,met:v.metodo||'—'}); });
+  _ventasPOS().forEach(v=>{ const sh=+v.ship||0; filas.push({rec:v.recibo,ori:'Punto de Venta',cli:v.cliente,venta:Math.max(0,(+v.total||0)-sh),env:sh,met:v.metodo||'—'}); });
+  PEDIDOS.forEach(p=>{ const sh=+p.ship||0; filas.push({rec:p.recibo,ori:p.origen,cli:p.cliente,venta:Math.max(0,(+p.total||0)-sh),env:sh,met:p.pago||'—'}); });
   TRANSACCIONES.forEach(t=>{ const o=(t.origen||'').toLowerCase(), me=(t.metodo||'').toLowerCase(); if(o.includes('cobrar')||me.includes('abono')) filas.push({rec:t.recibo||'ABONO',ori:'Otros ingresos (abono)',cli:'—',venta:0,env:0,otro:+t.monto||0,met:t.metodo||'Abono'}); });
   const rows=filas.map(f=>`
     <tr class="border-b border-gray-100 hover:bg-pg-cream/60">
@@ -1767,92 +1716,7 @@ RENDER.ingresos = function(){
 /* ============================================================
    PROMOCIONES — reglas activas + progreso de fidelidad
    ============================================================ */
-
-/* ----- Edición: tramos de descuento por monto ----- */
-let _edTramos=[];
-function editarTramos(){
-  _edTramos = PROMOS.montos.map(t=>({min:t.min,pct:t.pct}));
-  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-percent text-pg-gold mr-2"></i>Descuento por monto de compra</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
-    <p class="text-[12px] text-pg-muted mb-3">Se aplica automáticamente según el subtotal. Define desde qué monto y qué porcentaje.</p>
-    <div id="edTramosBox" class="space-y-2"></div>
-    <button onclick="addTramoRow()" class="mt-3 text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold"><i class="fa-solid fa-plus mr-1"></i>Agregar tramo</button>
-    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarTramos()" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
-  renderTramosBox();
-}
-function renderTramosBox(){ const box=document.getElementById('edTramosBox'); if(!box)return; box.innerHTML=_edTramos.map((t,i)=>`
-    <div class="flex items-center gap-2">
-      <span class="text-[12px] text-pg-muted">Desde C$</span>
-      <input type="number" min="0" value="${t.min}" oninput="_edTramos[${i}].min=+this.value||0" class="w-28 px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-pg-gold">
-      <span class="text-[12px] text-pg-muted">→</span>
-      <input type="number" min="0" step="0.5" value="${t.pct}" oninput="_edTramos[${i}].pct=+this.value||0" class="w-20 px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-pg-gold">
-      <span class="text-[12px] text-pg-muted">%</span>
-      <button onclick="_edTramos.splice(${i},1);renderTramosBox()" class="ml-auto w-7 h-7 rounded-md bg-red-100 text-red-600 hover:bg-red-200"><i class="fa-solid fa-trash"></i></button>
-    </div>`).join('')||'<p class="text-[12px] text-pg-muted">Sin tramos. Agregue al menos uno.</p>'; }
-function addTramoRow(){ _edTramos.push({min:0,pct:0}); renderTramosBox(); }
-function guardarTramos(){ const arr=_edTramos.filter(t=>(+t.min>=0)&&(+t.pct>0)).map(t=>({min:+t.min||0,pct:+t.pct||0})).sort((a,b)=>b.min-a.min); PROMOS.montos=arr; savePromos(); closeModal(); refrescar(); toast('Descuentos por monto actualizados'); }
-
-/* ----- Edición: premio de fidelidad (N.ª compra) ----- */
-function editarDecima(){
-  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-award text-pg-gold mr-2"></i>Premio de fidelidad</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="space-y-3 text-sm">
-      <div><label class="text-xs font-semibold">Cada cuántas compras se premia</label><input id="edDecCada" type="number" min="2" value="${PROMOS.decima.cada}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
-      <div><label class="text-xs font-semibold">Descuento en esa compra (%)</label><input id="edDecPct" type="number" min="0" step="0.5" value="${PROMOS.decima.pct}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
-    </div>
-    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarDecima()" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
-}
-function guardarDecima(){ const cada=Math.max(2,+document.getElementById('edDecCada').value||10); const pct=Math.max(0,+document.getElementById('edDecPct').value||0); PROMOS.decima={cada,pct}; savePromos(); closeModal(); refrescar(); toast('Premio de fidelidad actualizado'); }
-
-/* ----- Edición: puntos por monto ----- */
-function editarPuntos(){
-  const r=PROMOS.puntos||{cada:20,pts:1};
-  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-star text-pg-gold mr-2"></i>Puntos de fidelidad</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
-    <p class="text-[12px] text-pg-muted mb-3">Define cuántos puntos gana el cliente por cada monto de compra.</p>
-    <div class="space-y-3 text-sm">
-      <div><label class="text-xs font-semibold">Por cada compra de (C$)</label><input id="edPtsCada" type="number" min="1" value="${r.cada}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
-      <div><label class="text-xs font-semibold">Otorgar (puntos)</label><input id="edPtsPts" type="number" min="0" value="${r.pts}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
-    </div>
-    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarPuntos()" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
-}
-function guardarPuntos(){ const cada=Math.max(1,+document.getElementById('edPtsCada').value||20); const pts=Math.max(0,+document.getElementById('edPtsPts').value||0); PROMOS.puntos={cada,pts}; savePromos(); closeModal(); refrescar(); toast('Regla de puntos actualizada'); }
-
-/* ----- Edición: tipos de envío ----- */
-function nuevoEnvio(){ editarEnvio(null); }
-function editarEnvio(id){
-  const e = id ? envioById(id) : {id:'',nombre:'',costo:0,convenir:false,ir:false,nota:''};
-  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-truck text-pg-gold mr-2"></i>${id?'Editar':'Nuevo'} tipo de envío</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
-    <div class="space-y-3 text-sm">
-      <div><label class="text-xs font-semibold">Nombre</label><input id="evNom" value="${esc(e.nombre)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
-      <div class="grid grid-cols-2 gap-3"><div><label class="text-xs font-semibold">Costo (C$)</label><input id="evCosto" type="number" min="0" step="0.5" value="${e.costo}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
-      <div class="flex flex-col justify-end gap-1"><label class="flex items-center gap-2 text-[12px] font-semibold text-pg-green"><input id="evConv" type="checkbox" ${e.convenir?'checked':''}> Costo a convenir</label><label class="flex items-center gap-2 text-[12px] font-semibold text-pg-green"><input id="evIr" type="checkbox" ${e.ir?'checked':''}> Retener 2% I.R (&gt;C$1,000)</label></div></div>
-      <div><label class="text-xs font-semibold">Nota (aparece en el recibo/venta)</label><textarea id="evNota" rows="2" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold">${esc(e.nota||'')}</textarea></div>
-    </div>
-    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarEnvio(${id?("'"+id+"'"):'null'})" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
-}
-function guardarEnvio(id){
-  const nom=document.getElementById('evNom').value.trim(); if(!nom){ toast('Ingrese el nombre del envío'); return; }
-  const costo=Math.max(0,+document.getElementById('evCosto').value||0);
-  const convenir=document.getElementById('evConv').checked;
-  const ir=document.getElementById('evIr').checked;
-  const nota=document.getElementById('evNota').value.trim();
-  if(id){ const e=envioById(id); e.nombre=nom; e.costo=costo; e.convenir=convenir; e.ir=ir; e.nota=nota; }
-  else { const nid='env'+Date.now(); ENVIOS.push({id:nid,nombre:nom,costo,convenir,ir,nota}); }
-  saveEnvios(); closeModal(); refrescar(); toast('Tipo de envío guardado');
-}
-function delEnvio(id){ if(ENVIOS.length<=1){ toast('Debe existir al menos un tipo de envío'); return; } const e=envioById(id); if(!confirm('¿Eliminar el envío "'+(e?e.nombre:id)+'"?'))return; ENVIOS=ENVIOS.filter(x=>x.id!==id); if(POS_ENVIO===id) POS_ENVIO=ENVIOS[0].id; saveEnvios(); refrescar(); toast('Tipo de envío eliminado'); }
 RENDER.promos = function(){
-  const pr=PROMOS.puntos||{cada:20,pts:1};
-  const envRows=ENVIOS.map(e=>`
-    <div class="flex items-start justify-between gap-3 bg-pg-cream/60 rounded-xl px-4 py-3">
-      <div class="min-w-0">
-        <p class="text-sm font-semibold text-pg-ink"><i class="fa-solid fa-truck text-pg-gold mr-2"></i>${esc(e.nombre)}</p>
-        <p class="text-[11px] text-pg-muted mt-0.5">${e.costo>0?('C$'+(+e.costo).toFixed(2)):'Gratis'}${e.convenir?' · a convenir':''}${e.ir?' · retiene 2% I.R':''}</p>
-        ${e.nota?`<p class="text-[11px] text-pg-muted mt-0.5">${esc(e.nota)}</p>`:''}
-      </div>
-      <div class="shrink-0 flex gap-1">
-        <button onclick="editarEnvio('${e.id}')" class="w-7 h-7 rounded-md bg-pg-gold/20 text-pg-gold2 hover:bg-pg-gold/40"><i class="fa-solid fa-pen"></i></button>
-        <button onclick="delEnvio('${e.id}')" class="w-7 h-7 rounded-md bg-red-100 text-red-600 hover:bg-red-200"><i class="fa-solid fa-trash"></i></button>
-      </div>
-    </div>`).join('');
   const reglaMonto=PROMOS.montos.slice().sort((a,b)=>a.min-b.min).map(t=>`
     <div class="flex items-center justify-between bg-pg-cream/60 rounded-xl px-4 py-3">
       <span class="text-sm text-pg-ink"><i class="fa-solid fa-tag text-pg-gold mr-2"></i>Compras desde <b>${money(t.min)}</b></span>
@@ -1885,25 +1749,15 @@ RENDER.promos = function(){
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">${proxList}</div>
   </div>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-    <div class="bg-white rounded-2xl shadow-soft p-5"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-percent text-pg-gold mr-2"></i>Descuento por monto de compra</h3><button onclick="editarTramos()" class="text-[11px] px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-pen mr-1"></i>Editar</button></div>
+    <div class="bg-white rounded-2xl shadow-soft p-5"><h3 class="font-bold text-pg-green mb-3"><i class="fa-solid fa-percent text-pg-gold mr-2"></i>Descuento por monto de compra</h3>
       <p class="text-[12px] text-pg-muted mb-3">Se aplica automáticamente en el Punto de Venta y en la Tienda en Línea según el subtotal de la compra.</p>
       <div class="space-y-2">${reglaMonto}</div></div>
-    <div class="bg-white rounded-2xl shadow-soft p-5"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-award text-pg-gold mr-2"></i>Premio de fidelidad</h3><button onclick="editarDecima()" class="text-[11px] px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-pen mr-1"></i>Editar</button></div>
+    <div class="bg-white rounded-2xl shadow-soft p-5"><h3 class="font-bold text-pg-green mb-3"><i class="fa-solid fa-award text-pg-gold mr-2"></i>Premio de fidelidad</h3>
       <div class="rounded-xl bg-gradient-to-br from-pg-green to-pg-green2 text-white p-5 text-center">
         <p class="text-4xl font-bold">${PROMOS.decima.pct}%</p>
         <p class="text-sm opacity-90 mt-1">de descuento en cada <b>${PROMOS.decima.cada}.ª compra</b> del cliente registrado</p>
       </div>
-      <p class="text-[12px] text-pg-muted mt-3"><i class="fa-solid fa-star text-pg-gold mr-1"></i>Además, cada compra suma <b>puntos de fidelidad</b> según el monto de compra.</p></div>
-  </div>
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-    <div class="bg-white rounded-2xl shadow-soft p-5"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-star text-pg-gold mr-2"></i>Puntos de fidelidad</h3><button onclick="editarPuntos()" class="text-[11px] px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-pen mr-1"></i>Editar</button></div>
-      <div class="rounded-xl bg-pg-cream/60 p-5 text-center">
-        <p class="text-2xl font-bold text-pg-green">${pr.pts} punto${pr.pts==1?'':'s'}</p>
-        <p class="text-sm text-pg-muted mt-1">por cada <b>${money(pr.cada)}</b> de compra</p>
-      </div>
-      <p class="text-[12px] text-pg-muted mt-3">Los puntos se otorgan al cliente registrado y se acumulan en su Tarjeta de Fidelidad.</p></div>
-    <div class="bg-white rounded-2xl shadow-soft p-5"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-truck text-pg-gold mr-2"></i>Tipos de envío</h3><button onclick="nuevoEnvio()" class="text-[11px] px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-plus mr-1"></i>Nuevo</button></div>
-      <div class="space-y-2">${envRows||'<p class="text-[12px] text-pg-muted">Sin tipos de envío.</p>'}</div></div>
+      <p class="text-[12px] text-pg-muted mt-3"><i class="fa-solid fa-star text-pg-gold mr-1"></i>Además, cada compra suma <b>puntos de fidelidad</b> según los productos adquiridos.</p></div>
   </div>
   <div class="bg-white rounded-2xl shadow-soft"><div class="px-5 py-4 border-b border-gray-100"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-users text-pg-gold mr-2"></i>Progreso de fidelidad de clientes</h3></div>
     <div class="overflow-x-auto"><table class="w-full text-sm">
@@ -1916,5 +1770,6 @@ RENDER.promos = function(){
 
 <!-- Puente de escritorio: base de datos local (SQLite), sincronizacion y exportacion PDF/Excel.
      Solo se activa dentro de la app de escritorio; en el navegador no cambia nada. -->
+
 </body>
 </html>
