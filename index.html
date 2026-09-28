@@ -5,13 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel Administrativo — PG del Campo</title>
 <meta name="theme-color" content="#1b382b">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<link href="vendor/fonts/fonts.css" rel="stylesheet">
+<link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+<script src="vendor/tailwind.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
+<script src="vendor/qrcode.min.js"></script>
 <script>
   tailwind.config = { theme: { extend: {
     colors: { pg: {
@@ -144,23 +143,31 @@ const EMPRESA = {
 };
 const PAGO = EMPRESA;
 
-/* ---------- TIPOS DE ENVÍO ---------- */
+/* ---------- TIPOS DE ENVÍO (editables) ---------- */
 const ZONAS_DOMICILIO = ['Jinotepe','Dolores','Diriamba','San Marcos'];
-const ENVIOS = [
+const ENVIOS_DEFAULT = [
   { id:'domicilio',    nombre:'A domicilio (zonas locales)', costo:20, convenir:true,  ir:false, nota:'Jinotepe, Dolores, Diriamba y San Marcos: C$20.00. En el resto de lugares, a convenir con el cliente.' },
   { id:'comercios',    nombre:'Comercios y Distribuidores',  costo:0,  convenir:false, ir:false, nota:'Envío gratis.' },
   { id:'instituciones',nombre:'Empresas e Instituciones',    costo:20, convenir:false, ir:true,  nota:'C$20.00. En compras mayores a C$1,000.00 se retiene el 2% de I.R.' }
 ];
+let ENVIOS = (function(){ try{ const s=localStorage.getItem('pg_envios'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)&&a.length) return a; } }catch(e){} return JSON.parse(JSON.stringify(ENVIOS_DEFAULT)); })();
+function saveEnvios(){ try{ localStorage.setItem('pg_envios',JSON.stringify(ENVIOS)); }catch(e){} }
 function envioById(id){ return ENVIOS.find(e=>e.id===id)||ENVIOS[0]; }
 
-/* ---------- PROMOCIONES (reglas del negocio) ----------
-   - Descuento por monto de compra: 1% > C$600, 2% > C$1,200, 3% > C$1,800
-   - Premio de fidelidad: 2% adicional en cada 10.ª compra del cliente
+/* ---------- PROMOCIONES (reglas del negocio, editables) ----------
+   - Descuento por monto de compra: configurable por tramos (min → %)
+   - Premio de fidelidad: % adicional en cada N.ª compra del cliente
+   - Puntos: cada cierto monto de compra otorga un número de puntos
    ------------------------------------------------------------ */
-const PROMOS = {
+const PROMOS_DEFAULT = {
   montos:[ {min:1800,pct:3}, {min:1200,pct:2}, {min:600,pct:1} ],
-  decima:{ cada:10, pct:2 }
+  decima:{ cada:10, pct:2 },
+  puntos:{ cada:20, pts:1 }
 };
+let PROMOS = (function(){ try{ const s=localStorage.getItem('pg_promos'); if(s){ const o=JSON.parse(s); if(o&&Array.isArray(o.montos)&&o.decima){ if(!o.puntos) o.puntos={cada:20,pts:1}; return o; } } }catch(e){} return JSON.parse(JSON.stringify(PROMOS_DEFAULT)); })();
+function savePromos(){ try{ localStorage.setItem('pg_promos',JSON.stringify(PROMOS)); }catch(e){} }
+/* Puntos otorgados según el monto de la compra (regla configurable) */
+function puntosPorMonto(sub){ const r=PROMOS.puntos||{cada:20,pts:1}; const cada=+r.cada||0, pts=+r.pts||0; if(cada<=0||pts<=0) return 0; return Math.floor((+sub||0)/cada)*pts; }
 function promoMonto(sub){ for(const t of PROMOS.montos){ if((+sub||0)>=t.min) return t; } return null; }
 /* comprasPrevias = compras ya realizadas por el cliente (antes de ésta) */
 function esDecimaCompra(comprasPrevias){ const n=(+comprasPrevias||0)+1; return n>0 && n%PROMOS.decima.cada===0; }
@@ -226,50 +233,30 @@ function driveDirect(url){
 }
 
 /* ---------- CATÁLOGO ÚNICO (editable) ---------- */
-let PRODUCTOS = [
-  { id:'P01', nombre:'Café Molido Premium 1lb', cat:'Café',    precio:180, costo:110, stock:48, min:20, control:true,  online:true,  puntos:9,  icon:'fa-mug-hot' },
-  { id:'P02', nombre:'Café en Grano 1lb',       cat:'Café',    precio:200, costo:120, stock:12, min:15, control:true,  online:true,  puntos:10, icon:'fa-seedling' },
-  { id:'P03', nombre:'Pinolillo Tradicional 1lb',cat:'Pinolillo',precio:90, costo:52,  stock:5,  min:10, control:true,  online:true,  puntos:5,  icon:'fa-wheat-awn' },
-  { id:'P04', nombre:'Pinol Puro 1lb',           cat:'Pinol',   precio:70,  costo:40,  stock:34, min:12, control:true,  online:true,  puntos:4,  icon:'fa-bowl-rice' },
-  { id:'P05', nombre:'Humus de Lombriz 5kg',     cat:'Humus',   precio:250, costo:150, stock:6,  min:8,  control:true,  online:true,  puntos:12, icon:'fa-worm' },
-  { id:'P06', nombre:'Humus de Lombriz 1kg',     cat:'Humus',   precio:80,  costo:45,  stock:60, min:15, control:true,  online:true,  puntos:4,  icon:'fa-leaf' },
-  { id:'P07', nombre:'Café Oro Especial 1lb',    cat:'Café',    precio:260, costo:160, stock:9,  min:10, control:true,  online:true,  puntos:13, icon:'fa-award' },
-  { id:'P08', nombre:'Combo Degustación',        cat:'Combo',   precio:320, costo:190, stock:15, min:5,  control:true,  online:true,  puntos:16, icon:'fa-box' }
-];
+/* Reinicio desde cero: sin productos de ejemplo. Cree su catálogo real con
+   "Nuevo producto" y publíquelo con "Publicar a Tienda y Tarjeta". */
+let PRODUCTOS = [];
 
 /* ---------- CLIENTES / FIDELIDAD ---------- */
-let CLIENTES = [
-  { id:'C1', nombre:'Ana Torres', tel:'8888-1122', tarjeta:'PG-0001', puntos:120, compras:8, saldo:0, alta:'2026-01-15' },
-  { id:'C2', nombre:'Luis Gómez', tel:'8777-3344', tarjeta:'PG-0002', puntos:60,  compras:4, saldo:250, alta:'2026-03-02' },
-  { id:'C3', nombre:'Rosa Díaz',  tel:'8555-9988', tarjeta:'PG-0003', puntos:200, compras:14,saldo:0, alta:'2026-05-20' },
-  { id:'C4', nombre:'Jorge Mena', tel:'8444-2200', tarjeta:'PG-0004', puntos:35,  compras:3, saldo:120, alta:'2026-09-05' },
-  { id:'C5', nombre:'Karla Soto', tel:'8999-7766', tarjeta:'PG-0005', puntos:90,  compras:6, saldo:0, alta:'2026-09-18' }
-];
+/* Reinicio desde cero: sin clientes de ejemplo. Se llenan con clientes reales
+   que llegan desde la nube (Tienda en Línea / Tarjeta Fidelidad) o del Punto de Venta. */
+let CLIENTES = [];
 
 /* ---------- PEDIDOS (Tienda en Línea + Tarjeta Fidelidad) ---------- */
-let PEDIDOS = [
-  { recibo:'R-2051', origen:'Tienda en Línea',  cliente:'Ana Torres', items:[{n:'Café Molido Premium 1lb',q:2,precio:180},{n:'Pinolillo Tradicional 1lb',q:1,precio:90}], total:450, estado:'Pendiente',  pago:'Pendiente', fecha:'19/09 08:30' },
-  { recibo:'R-2052', origen:'Tarjeta Fidelidad', cliente:'Luis Gómez', items:[{n:'Humus de Lombriz 5kg',q:1,precio:250}], total:250, estado:'Pendiente',  pago:'Crédito', fecha:'19/09 09:10' },
-  { recibo:'R-2053', origen:'Tienda en Línea',  cliente:'Rosa Díaz', items:[{n:'Pinol Puro 1lb',q:3,precio:70}], total:210, estado:'Preparando', pago:'Pagado', fecha:'19/09 09:55' },
-  { recibo:'R-2054', origen:'Tarjeta Fidelidad', cliente:'Jorge Mena', items:[{n:'Café Oro Especial 1lb',q:1,precio:260},{n:'Humus de Lombriz 1kg',q:2,precio:80}], total:420, estado:'Pendiente', pago:'Crédito', fecha:'19/09 10:40' },
-  { recibo:'R-2055', origen:'Tienda en Línea',  cliente:'Karla Soto', items:[{n:'Combo Degustación',q:1,precio:320}], total:320, estado:'Pendiente', pago:'Pagado', fecha:'19/09 11:25' }
-];
+/* Sin datos de ejemplo: solo se llena con pedidos reales que llegan desde la nube (Tienda en Línea / Tarjeta Fidelidad). */
+let PEDIDOS = [];
 
 /* ---------- VENTAS / TRANSACCIONES ---------- */
-let VENTAS = [
-  { hora:'07:42', recibo:'V-1042', origen:'Punto de Venta', cliente:'Mostrador', total:360, metodo:'Efectivo' },
-  { hora:'08:15', recibo:'V-1043', origen:'Punto de Venta', cliente:'María Pérez', total:180, metodo:'ACH' },
-  { hora:'09:03', recibo:'V-1044', origen:'Tienda en Línea', cliente:'Pulpería La Esquina', total:900, metodo:'Transferencia' },
-  { hora:'10:20', recibo:'V-1045', origen:'Tarjeta Fidelidad', cliente:'Carlos Ruiz', total:250, metodo:'LaFise' },
-  { hora:'11:48', recibo:'V-1046', origen:'Punto de Venta', cliente:'Mostrador', total:140, metodo:'Efectivo' }
-];
-let TRANSACCIONES = VENTAS.map(v=>({ id:uid('TX-'), recibo:v.recibo, fecha:fechaHora(), metodo:v.metodo, monto:v.total, estado:'Confirmada', origen:v.origen }));
+/* Reinicio desde cero: sin ventas/recibos de ejemplo. Los ingresos se registran
+   únicamente cuando un pedido se ENTREGA (al contado o con abono), o desde el Punto de Venta. */
+let VENTAS = [];
+let TRANSACCIONES = [];
 
 /* ---------- CUPONES ---------- */
 let CUPONES = [
-  { codigo:'CAFE10', tipo:'%', valor:10, desc:'10% en café', activo:true, usos:12 },
-  { codigo:'ENVIOGRATIS', tipo:'C$', valor:20, desc:'Envío gratis Jinotepe', activo:true, usos:5 },
-  { codigo:'FIEL50', tipo:'C$', valor:50, desc:'C$50 por fidelidad', activo:false, usos:20 }
+  { codigo:'CAFE10', tipo:'%', valor:10, desc:'10% en café', activo:true, usos:0 },
+  { codigo:'ENVIOGRATIS', tipo:'C$', valor:20, desc:'Envío gratis Jinotepe', activo:true, usos:0 },
+  { codigo:'FIEL50', tipo:'C$', valor:50, desc:'C$50 por fidelidad', activo:false, usos:0 }
 ];
 
 /* ---------- USUARIOS ---------- */
@@ -282,13 +269,10 @@ let USUARIOS = [
 function saveUsuarios(){ try{ localStorage.setItem('pg_usuarios',JSON.stringify(USUARIOS)); }catch(e){} }
 
 /* ---------- SALIDAS / GASTOS (Finanzas) ---------- */
+/* Reinicio desde cero: sin gastos de ejemplo. Se registran los gastos reales del negocio. */
 const CATEGORIAS_SALIDA=['Alimentación','Alquiler','Compras de Productos y suministros','Gastos administrativos','Gastos de Ventas','Gastos Financieros','Equipamientos','Empleados','Impuestos','Mantenimiento y Reparaciones','Marketing y Publicidad','Transporte y logísticas','Otros'];
 const CAT_ICON={'Alimentación':'fa-utensils','Alquiler':'fa-house','Compras de Productos y suministros':'fa-box','Gastos administrativos':'fa-briefcase','Gastos de Ventas':'fa-cart-shopping','Gastos Financieros':'fa-percent','Equipamientos':'fa-screwdriver-wrench','Empleados':'fa-users','Impuestos':'fa-landmark','Mantenimiento y Reparaciones':'fa-wrench','Marketing y Publicidad':'fa-bullhorn','Transporte y logísticas':'fa-truck','Otros':'fa-ellipsis'};
-let SALIDAS=[
-  { id:'S1', nombre:'Alquiler de local', monto:8000, categoria:'Alquiler', proveedor:'Inmobiliaria León', estado:'pendiente', vence:'2026-09-30', obs:'Mensualidad septiembre', repetir:true },
-  { id:'S2', nombre:'Compra de empaques', monto:2450, categoria:'Compras de Productos y suministros', proveedor:'Empaques del Norte', estado:'pendiente', vence:'2026-09-25', obs:'', repetir:false },
-  { id:'S3', nombre:'Pago de energía eléctrica', monto:1830, categoria:'Gastos administrativos', proveedor:'DISNORTE', estado:'pagado', vence:'2026-09-10', obs:'Recibo agosto', repetir:true }
-];
+let SALIDAS=[];
 (function loadSalidas(){ try{ const s=localStorage.getItem('pg_salidas'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)) SALIDAS=a; } }catch(e){} })();
 function saveSalidas(){ try{ localStorage.setItem('pg_salidas',JSON.stringify(SALIDAS)); }catch(e){} }
 let SAL_TAB='pendiente';
@@ -373,7 +357,7 @@ function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('-
 function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toastMsg').textContent=msg; t.classList.remove('hidden'); t.classList.add('flex'); clearTimeout(window._tt); window._tt=setTimeout(()=>{t.classList.add('hidden');t.classList.remove('flex');},2600); }
 function openModal(html){ document.getElementById('modalBody').innerHTML=html; document.getElementById('modal').classList.add('open'); }
 function closeModal(){ document.getElementById('modal').classList.remove('open'); }
-function refrescar(){ if(typeof VISTA==='undefined'||!document.getElementById('view-'+VISTA)) return; if(RENDER[VISTA]) RENDER[VISTA](); }
+function refrescar(){ if(typeof VISTA==='undefined'||!document.getElementById('view-'+VISTA)) return; if(typeof applyEntregas==='function') applyEntregas(); if(RENDER[VISTA]) RENDER[VISTA](); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 
@@ -442,7 +426,48 @@ RENDER.inicio = function(){
   setTimeout(drawDonut,60);
 };
 function drawDonut(){ const el=document.getElementById('donutStock'); if(!el||!window.Chart) return; const c=stockCounts(); if(_donut)_donut.destroy(); _donut=new Chart(el,{type:'doughnut',data:{labels:['Disponibilidad','Mínimo','Agotados','Sin control'],datasets:[{data:[c.disponible,c.minimo,c.agotado,c.sincontrol],backgroundColor:['#8eb057','#c8963e','#c0392b','#9aa0a6'],borderWidth:2,borderColor:'#fff'}]},options:{cutout:'62%',plugins:{legend:{display:false}},responsive:true,maintainAspectRatio:true}}); }
-function entregarPedido(r){ const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return; p.estado='Entregado'; if(typeof DELIVERED_ONLINE!=='undefined') DELIVERED_ONLINE[r]=true; refrescar(); toast('Pedido '+r+' entregado'); }
+function entregarPedido(r){
+  const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return;
+  const sh=+p.ship||0, total=Math.max(0,(+p.total||0));
+  openModal(`<div class="p-5">
+    <div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-truck-fast text-pg-gold mr-2"></i>Entregar pedido ${p.recibo}</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="rounded-xl bg-pg-cream/60 p-4 mb-4 text-sm">
+      <div class="flex justify-between"><span class="text-pg-muted">Cliente</span><b>${esc(p.cliente)}</b></div>
+      <div class="flex justify-between mt-1"><span class="text-pg-muted">Total del pedido</span><b class="text-pg-green">${money(total)}</b></div>
+      ${sh>0?`<div class="flex justify-between mt-1"><span class="text-pg-muted">Incluye env\u00edo</span><span>${money(sh)}</span></div>`:''}
+    </div>
+    <p class="text-[12px] text-pg-muted mb-2">Seleccione la forma de entrega:</p>
+    <div class="space-y-2">
+      <label class="flex items-center gap-2 p-3 rounded-lg border border-gray-200 cursor-pointer hover:border-pg-gold"><input type="radio" name="entModo" value="contado" checked onchange="_entToggle()"><span class="text-sm font-semibold text-pg-green"><i class="fa-solid fa-money-bill-wave text-pg-leaf mr-1"></i>Entregado al contado</span><span class="text-[11px] text-pg-muted ml-auto">Ingresa a Ingresos</span></label>
+      <label class="flex items-center gap-2 p-3 rounded-lg border border-gray-200 cursor-pointer hover:border-pg-gold"><input type="radio" name="entModo" value="credito" onchange="_entToggle()"><span class="text-sm font-semibold text-pg-green"><i class="fa-solid fa-hand-holding-dollar text-pg-gold2 mr-1"></i>Entregado a cr\u00e9dito</span><span class="text-[11px] text-pg-muted ml-auto">Pasa a Cuentas por Cobrar</span></label>
+    </div>
+    <div id="entAbonoBox" class="mt-3 hidden">
+      <label class="text-xs font-semibold">Abono inicial (C$)</label>
+      <input id="entAbono" type="number" min="0" max="${total}" value="0" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-pg-gold">
+      <p class="text-[11px] text-pg-muted mt-1">El abono ingresa a Ingresos; el saldo restante queda en Cuentas por Cobrar del cliente.</p>
+    </div>
+    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="confirmarEntrega('${p.recibo}')" class="flex-1 py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold">Confirmar entrega</button></div>
+  </div>`);
+}
+function _entToggle(){ const m=document.querySelector('input[name=entModo]:checked'); const box=document.getElementById('entAbonoBox'); if(box) box.classList.toggle('hidden', !(m&&m.value==='credito')); }
+function confirmarEntrega(r){
+  const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return;
+  const modo=(document.querySelector('input[name=entModo]:checked')||{}).value||'contado';
+  const sh=+p.ship||0, total=Math.max(0,(+p.total||0)), idx=PEDIDOS.indexOf(p);
+  if(modo==='contado'){
+    registrarEntrega({recibo:p.recibo,modo:'contado',total:total,abono:total,saldo:0,cliente:p.cliente,tel:p.tel||'',origen:p.origen,metodo:'Contado',ship:sh,fecha:fechaHora()});
+    if(idx>=0) PEDIDOS.splice(idx,1);
+    closeModal(); refrescar(); toast('Pedido '+r+' entregado al contado');
+  } else {
+    let abono=parseFloat((document.getElementById('entAbono')||{}).value)||0;
+    abono=Math.max(0,Math.min(abono,total));
+    const saldo=+(total-abono).toFixed(2);
+    registrarEntrega({recibo:p.recibo,modo:'credito',total:total,abono:abono,saldo:saldo,cliente:p.cliente,tel:p.tel||'',origen:p.origen,metodo:'Cr\u00e9dito',ship:sh,fecha:fechaHora()});
+    if(idx>=0) PEDIDOS.splice(idx,1);
+    closeModal(); refrescar(); toast('Pedido '+r+' entregado a cr\u00e9dito \u00b7 saldo '+money(saldo)+' a CxC');
+    if(abono>0){ abrirRecibo({docTipo:'Recibo',recibo:'AB-'+p.recibo,tipo:'Abono a factura de cr\u00e9dito '+p.recibo,cliente:p.cliente,tel:p.tel||'',fecha:fechaHora(),metodo:'Abono',lineas:[{desc:'Abono a factura '+p.recibo,cant:1,precio:abono}],subtotal:abono,ship:0,total:abono,saldoPendiente:saldo}); }
+  }
+}
 
 
 /* === app2_4.js === */
@@ -462,7 +487,7 @@ function posCalc(){
   const fiel=POS_FIEL?Math.round((sub-desc)*0.05):0;
   const irRet=(env.ir&&sub>1000)?+((sub)*0.02).toFixed(2):0;
   const total=Math.max(0,sub-desc-promo.total-fiel+ship-irRet);
-  const puntos=puntosDeItems(CART);
+  const puntos=puntosPorMonto(sub);
   return {sub,ship,desc,promo,fiel,irRet,total,env,cli,puntos};
 }
 RENDER.vender = function(){
@@ -620,12 +645,13 @@ RENDER.catalogo = function(){
     <span class="text-[11px] text-pg-muted mr-1"><i class="fa-solid fa-cloud text-pg-gold"></i> Inventario compartido con la Tienda en Línea y la Tarjeta de Fidelidad</span>
     <button onclick="syncPull()" class="text-xs px-3 py-1.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white font-semibold"><i class="fa-solid fa-cloud-arrow-down mr-1"></i> Traer de la nube</button>
     <button onclick="syncPush()" class="text-xs px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-cloud-arrow-up mr-1"></i> Publicar a Tienda y Tarjeta</button>
+    <button onclick="resetTodo()" class="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"><i class="fa-solid fa-trash-can-arrow-up mr-1"></i> Reiniciar desde cero</button>
     <span id="syncStatus" class="text-[11px] text-pg-muted ml-auto">${SYNC_MSG}</span>
   <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">${cards}</div>`;
 };
 const ICONS=['fa-mug-hot','fa-seedling','fa-wheat-awn','fa-bowl-rice','fa-worm','fa-leaf','fa-award','fa-box','fa-jar','fa-bottle-water'];
 let FIMG='';
-let SYNC_MSG='Modo local (datos de prueba)';
+let SYNC_MSG='Conectando con la nube…';
 function formProducto(p){
   const isNew=!p;
   p=p||{id:'',nombre:'',cat:'Café',precio:'',costo:'',stock:'',min:'',control:true,online:true,puntos:'',icon:'fa-box',imagen:''};
@@ -749,6 +775,29 @@ async function syncPush(){
   }catch(e){ toast('No se pudo publicar'); setSyncMsg('<span class="text-red-600">Error al publicar</span>'); }
 }
 
+/* Reinicia TODO desde cero: borra los datos de prueba de la nube (Firebase) y del navegador.
+   Es una acci\u00f3n destructiva y afecta tambi\u00e9n a la Tienda en L\u00ednea y la Tarjeta de Fidelidad. */
+async function resetTodo(){
+  if(!confirm('\u26a0\ufe0f Esto BORRAR\u00c1 todos los datos (productos, clientes, pedidos, ventas, transacciones y cuentas por cobrar) tanto de este panel como de la Tienda en L\u00ednea y la Tarjeta de Fidelidad. Esta acci\u00f3n NO se puede deshacer. \u00bfContinuar?')) return;
+  if(!confirm('\u00daltima confirmaci\u00f3n: el negocio quedar\u00e1 COMPLETAMENTE VAC\u00cdO (desde cero). \u00bfSeguro que desea borrar todo?')) return;
+  setSyncMsg('Reiniciando desde cero\u2026');
+  /* 1) Borrar los nodos de datos en Firebase */
+  if(window.PGSync&&window.PGSync.ok&&window.PGSync.removeAt){
+    const nodos=['productos','clientes','transacciones','compras_registro','cuentas_por_cobrar','meta','secuencia_recibos'];
+    for(const n of nodos){ try{ await window.PGSync.removeAt(n); }catch(e){} }
+  }
+  /* 2) Limpiar los datos guardados localmente en el navegador */
+  try{
+    ENTREGAS={}; DELIVERED_ONLINE={}; saveEntregas();
+    ['PG_ENTREGAS_V1','pg_salidas','pg_usuarios'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+  }catch(e){}
+  /* 3) Vaciar los arreglos en memoria */
+  PRODUCTOS=[]; CLIENTES=[]; PEDIDOS=[]; VENTAS=[]; TRANSACCIONES=[]; SALIDAS=[]; CART=[];
+  CLOUD={ productos:{}, clientes:{}, transacciones:{}, compras:{}, cxc:{} };
+  toast('Todo reiniciado. Recargando\u2026');
+  setTimeout(()=>{ location.reload(); }, 900);
+}
+
 
 /* === app2_5b.js === */
 
@@ -759,7 +808,33 @@ async function syncPush(){
    ============================================================ */
 let CLOUD={ productos:{}, clientes:{}, transacciones:{}, compras:{}, cxc:{} };
 let CLOUD_ON=false;
-let DELIVERED_ONLINE={};
+let DELIVERED_ONLINE={};   /* recibo -> true (compatibilidad) */
+let ENTREGAS={};           /* recibo -> {recibo,modo,total,abono,saldo,cliente,tel,origen,metodo,ship,fecha} */
+(function loadEntregas(){ try{ const s=localStorage.getItem('PG_ENTREGAS_V1'); if(s){ const o=JSON.parse(s); if(o&&typeof o==='object'){ ENTREGAS=o; Object.keys(ENTREGAS).forEach(k=>{ DELIVERED_ONLINE[k]=true; }); } } }catch(e){} })();
+function saveEntregas(){ try{ localStorage.setItem('PG_ENTREGAS_V1',JSON.stringify(ENTREGAS)); }catch(e){} }
+function registrarEntrega(rec){ if(!rec||!rec.recibo)return; ENTREGAS[rec.recibo]=rec; DELIVERED_ONLINE[rec.recibo]=true; saveEntregas(); }
+function saldoEntregasCliente(nombre){ let s=0; Object.values(ENTREGAS).forEach(r=>{ if(r&&r.modo==='credito'&&r.cliente===nombre) s+=(+r.saldo||0); }); return +s.toFixed(2); }
+/* Recalcula (idempotente) los efectos de las entregas: retira los pedidos entregados
+   de Inicio/Pedidos, deriva los ingresos (contado y abonos) y suma el saldo de crédito a CxC. */
+function applyEntregas(){
+  PEDIDOS = PEDIDOS.filter(p=>!ENTREGAS[p.recibo]);
+  VENTAS = VENTAS.filter(v=>!v.deliv);
+  TRANSACCIONES = TRANSACCIONES.filter(t=>!t.deliv);
+  Object.values(ENTREGAS).forEach(r=>{
+    if(!r) return;
+    const hh=(String(r.fecha||'').split(',').pop()||'').trim()||hora();
+    if(r.modo==='contado'){
+      VENTAS.unshift({ deliv:true, hora:hh, recibo:r.recibo, origen:r.origen||'Pedido', cliente:r.cliente||'', total:+r.total||0, metodo:r.metodo||'Contado', sub:Math.max(0,(+r.total||0)-(+r.ship||0)), ship:+r.ship||0, desc:0 });
+      TRANSACCIONES.unshift({ deliv:true, id:'TXE-'+r.recibo, recibo:r.recibo, fecha:r.fecha||fechaHora(), metodo:r.metodo||'Contado', monto:+r.total||0, estado:'Confirmada', origen:r.origen||'Pedido' });
+    } else if((+r.abono||0)>0){
+      VENTAS.unshift({ deliv:true, hora:hh, recibo:r.recibo, origen:r.origen||'Pedido', cliente:r.cliente||'', total:+r.abono||0, metodo:'Abono (cr\u00e9dito)', sub:+r.abono||0, ship:0, desc:0 });
+      TRANSACCIONES.unshift({ deliv:true, id:'TXE-'+r.recibo, recibo:r.recibo, fecha:r.fecha||fechaHora(), metodo:'Abono', monto:+r.abono||0, estado:'Confirmada', origen:'Cuenta por cobrar' });
+    }
+  });
+  /* asegura que exista el cliente con saldo de crédito pendiente */
+  Object.values(ENTREGAS).forEach(r=>{ if(r&&r.modo==='credito'&&(+r.saldo||0)>0&&r.cliente){ if(!CLIENTES.find(c=>c.nombre===r.cliente)){ CLIENTES.push({ id:'CE-'+r.recibo, nombre:r.cliente, tel:r.tel||'', tarjeta:'', puntos:0, compras:0, saldo:0, alta:'' }); } } });
+  CLIENTES.forEach(c=>{ const base=(c._saldoCloud!=null)?+c._saldoCloud:0; c.saldo=+(base+saldoEntregasCliente(c.nombre)).toFixed(2); });
+}
 
 function cloudClientCode(tel){ const d=String(tel||'').replace(/\D/g,''); return 'PG-'+((d.slice(-4)||'0000').padStart(4,'0')); }
 
@@ -784,7 +859,7 @@ function mergeCloudCxc(data){
   CLOUD.cxc=data||{};
   const byTel={};
   Object.values(CLOUD.cxc).forEach(x=>{ if(!x)return; const tel=x.whatsapp_cliente; if(!tel)return; byTel[tel]=(byTel[tel]||0)+(+x.saldo_pendiente||0); });
-  Object.keys(byTel).forEach(tel=>{ let ex=CLIENTES.find(x=>x.cloudKey===tel||x.tel===tel); if(ex){ ex.saldo=byTel[tel]; } });
+  Object.keys(byTel).forEach(tel=>{ let ex=CLIENTES.find(x=>x.cloudKey===tel||x.tel===tel); if(ex){ ex._saldoCloud=byTel[tel]; ex.saldo=+(byTel[tel]+saldoEntregasCliente(ex.nombre)).toFixed(2); } });
 }
 
 function resolveItems(itemsRaw){
@@ -809,12 +884,10 @@ function rebuildCloudRecibos(){
   VENTAS=VENTAS.filter(v=>!v.cloud);
   TRANSACCIONES=TRANSACCIONES.filter(t=>!t.cloud);
   list.forEach(m=>{
+    if(DELIVERED_ONLINE[m.recibo]) return; /* ya entregado: no reaparece en Inicio ni en Pedidos */
     const pago=m.credito?'Cr\u00e9dito':(m.estado_pago==='pendiente'?'Pendiente':'Pagado');
-    const metodo=m.metodo||'Transferencia';
-    const entregado=!!DELIVERED_ONLINE[m.recibo];
-    PEDIDOS.unshift({ cloud:true, recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', tel:m.tel||'', items:m.items||[], total:+m.total||0, ship:+m.ship||0, descMonto:(m.descMonto!=null?+m.descMonto:null), descTipo:m.descTipo||'', estado:entregado?'Entregado':'Pendiente', pago, fecha:m.fecha||'' });
-    VENTAS.unshift({ cloud:true, hora:String(m.fecha||'').split(',').pop().trim(), recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', total:+m.total||0, ship:+m.ship||0, metodo });
-    TRANSACCIONES.unshift({ cloud:true, id:'TX-'+m.recibo, recibo:m.recibo, fecha:m.fecha||'', metodo, monto:+m.total||0, estado:(pago==='Pagado'?'Confirmada':'Pendiente'), origen:m.origen||'Tienda en Linea' });
+    PEDIDOS.unshift({ cloud:true, recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', tel:m.tel||'', items:m.items||[], total:+m.total||0, ship:+m.ship||0, descMonto:(m.descMonto!=null?+m.descMonto:null), descTipo:m.descTipo||'', estado:'Pendiente', pago, fecha:m.fecha||'' });
+    /* El ingreso NO se registra al llegar el pedido: se registra al ENTREGARLO (contado o abono). */
   });
 }
 
@@ -873,7 +946,7 @@ function simularPedidoOnline(){
   if(!online.length){ toast('No hay productos publicados con stock'); return; }
   const p1=online[Math.floor(Math.random()*online.length)];
   const q=1+Math.floor(Math.random()*3);
-  const cli=CLIENTES[Math.floor(Math.random()*CLIENTES.length)];
+  const cli=CLIENTES.length?CLIENTES[Math.floor(Math.random()*CLIENTES.length)]:{nombre:'Cliente en línea'};
   const origen=Math.random()<0.5?'Tienda en Línea':'Tarjeta Fidelidad';
   const nro='R-'+(2055+PEDIDOS.length+1);
   PEDIDOS.unshift({recibo:nro,origen,cliente:cli.nombre,items:[{n:p1.nombre,q,precio:p1.precio}],total:p1.precio*q,estado:'Pendiente',pago:origen==='Tarjeta Fidelidad'?'Crédito':'Pagado',fecha:fechaHora()});
@@ -1090,8 +1163,8 @@ function reciboHTML(d){
   const logoTag=(typeof LOGO_GOLD!=='undefined'&&LOGO_GOLD)?`<img src="${LOGO_GOLD}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;margin-bottom:6px">`:`<div class="lg">&#127793;<\/div>`;
   const cliBlock=`<div class="cli"><b>Cliente:<\/b> ${d.cliente||'Mostrador'}${d.tel?'<br><b>Tel:<\/b> '+d.tel:''}${d.dir?'<br><b>Dirección:<\/b> '+d.dir:''}<\/div>`;
   const convNota=d.convenir?`<p style="text-align:center;color:#a9781f;font-size:10px;margin:6px 0 0">* Costo de envío a convenir con el cliente<\/p>`:'';
-  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Recibo ${d.recibo}</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script>
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${d.docTipo||'Factura'} ${d.recibo}</title>
+  <script src="vendor/qrcode.min.js"><\/script>
   <style>*{box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}body{margin:0;background:#f4f4f0;color:#2c2c2c}
   .r{max-width:360px;margin:20px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 22px rgba(27,56,43,.15)}
   .hd{background:#1b382b;color:#fff;padding:18px 20px;text-align:center}.hd .lg{width:44px;height:44px;border-radius:50%;background:#c8963e;color:#1b382b;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:6px}.hd h1{margin:0;font-size:16px}.hd p{margin:2px 0 0;font-size:11px;opacity:.85}
@@ -1100,10 +1173,11 @@ function reciboHTML(d){
   .pay{background:#f4f4f0;border-radius:10px;padding:10px;margin-top:10px;font-size:11px;line-height:1.5}.qr{display:flex;justify-content:center;margin:12px 0}.ft{text-align:center;font-size:10px;color:#6b7c68;padding:0 20px 16px}.noprint{text-align:center;margin:14px}.btn{background:#c8963e;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px}
   @media print{.noprint{display:none}body{background:#fff}.r{box-shadow:none;margin:0}}<\/style></head><body>
   <div class="r"><div class="hd">${logoTag}<h1>${EMPRESA.nombre}<\/h1><p>${EMPRESA.lema} · ${EMPRESA.lugar}<\/p><p>RUC ${EMPRESA.ruc} · Régimen ${EMPRESA.regimen}<\/p><\/div>
-  <div class="bd"><div class="meta"><span><b>Recibo:<\/b> ${d.recibo}<\/span><span>${d.fecha}<\/span><\/div><div class="meta"><span><b>Tipo:<\/b> ${d.tipo}<\/span><\/div>
+  <div class="bd"><div class="meta"><span><b>${d.docTipo||'Factura'}:<\/b> ${d.recibo}<\/span><span>${d.fecha}<\/span><\/div><div class="meta"><span><b>Tipo:<\/b> ${d.tipo}<\/span><\/div>
     ${cliBlock}
     <table><thead><tr><td>Descripción<\/td><td style="text-align:center">Cant<\/td><td style="text-align:right">P.U.<\/td><td style="text-align:right">Total<\/td><\/tr><\/thead><tbody>${filas}<\/tbody><tbody style="border-top:1px solid #e2e8e0">${breakdown}<\/tbody><tfoot><tr><td colspan="3">TOTAL<\/td><td style="text-align:right">${money(d.total)}<\/td><\/tr><\/tfoot><\/table>
     ${convNota}
+    ${(d.saldoPendiente!=null&&+d.saldoPendiente>0)?`<div class="meta"><span><b>Saldo pendiente:<\/b> ${money(d.saldoPendiente)}<\/span><\/div>`:''}
     <div class="meta"><span><b>Método de pago:<\/b> ${d.metodo||'Transferencia'}<\/span><\/div>
     <div class="pay"><b>Pago vía ${EMPRESA.banco}<\/b><br>Cuenta N° <b>${EMPRESA.cuenta}<\/b><br>ACH alias <b>${EMPRESA.ach}<\/b><br>WhatsApp <b>+505 ${EMPRESA.whatsapp}<\/b><\/div>
     <div class="qr"><div id="rqr"><\/div><\/div><p style="text-align:center;color:#6b7c68;font-size:10px;margin:0">Escanee el QR con los datos de pago<\/p><\/div>
@@ -1126,7 +1200,11 @@ function reciboPedido(r){ const p=PEDIDOS.find(x=>x.recibo===r); if(!p)return;
   abrirRecibo({recibo:p.recibo,tipo:p.origen,cliente:p.cliente,tel:p.tel||'',fecha:p.fecha,
     metodo:p.pago==='Crédito'?'Crédito (Fidelidad)':'Transferencia LaFise',
     lineas, subtotal: subItems>0?subItems:p.total, descGen, descTipos, ship, envioNom:ship>0?'Envío a domicilio':'', total:p.total}); }
-function reciboVenta(r){ const v=VENTAS.find(x=>x.recibo===r); if(!v)return; abrirRecibo({recibo:v.recibo,tipo:v.origen,cliente:v.cliente,fecha:fechaHora(),metodo:v.metodo,lineas:[{desc:'Venta registrada',cant:1,precio:v.total}],total:v.total}); }
+function reciboVenta(r){ const v=VENTAS.find(x=>x.recibo===r); if(!v)return;
+  const ship=+v.ship||0, desc=+v.desc||0;
+  const sub=(v.sub!=null)?+v.sub:Math.max(0,(+v.total||0)-ship+desc);
+  abrirRecibo({recibo:v.recibo,tipo:v.origen,cliente:v.cliente,fecha:fechaHora(),metodo:v.metodo,
+    lineas:[{desc:'Venta registrada',cant:1,precio:sub}], subtotal:sub, descGen:desc, descTipos:desc>0?['Descuento aplicado']:[], ship, envioNom:ship>0?'Env\u00edo':'', total:v.total}); }
 
 /* ============================================================
    FINANZAS
@@ -1433,7 +1511,14 @@ RENDER.cxc = function(){
     <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-pg-cream text-pg-muted text-[11px] uppercase"><tr><th class="px-3 py-2 text-left">Cliente</th><th class="px-3 py-2 text-left">Tarjeta</th><th class="px-3 py-2 text-left">Teléfono</th><th class="px-3 py-2 text-right">Saldo</th><th class="px-3 py-2 text-center">Acción</th></tr></thead><tbody>${rows||'<tr><td colspan=5 class="text-center py-6 text-pg-muted">Sin cuentas por cobrar</td></tr>'}</tbody></table></div>
   </div>`;
 };
-function abonar(id){ const c=CLIENTES.find(x=>x.id===id); if(!c)return; const v=parseFloat(prompt('Monto del abono (C$) para '+c.nombre+'. Saldo actual: '+money(c.saldo),c.saldo)); if(!v||v<=0)return; c.saldo=Math.max(0,c.saldo-v); TRANSACCIONES.unshift({id:uid('TX-'),recibo:'ABONO',fecha:fechaHora(),metodo:'Abono',monto:v,estado:'Confirmada',origen:'Cuenta por cobrar'}); refrescar(); toast('Abono de '+money(v)+' registrado'); }
+function abonar(id){ const c=CLIENTES.find(x=>x.id===id); if(!c)return; const v=parseFloat(prompt('Monto del abono (C$) para '+c.nombre+'. Saldo actual: '+money(c.saldo),c.saldo)); if(!v||v<=0)return;
+  let rest=v;
+  /* Aplica el abono contra las entregas a cr\u00e9dito del cliente (reduce su saldo pendiente y suma el ingreso). */
+  Object.values(ENTREGAS).forEach(r=>{ if(rest<=0)return; if(r&&r.modo==='credito'&&r.cliente===c.nombre&&(+r.saldo||0)>0){ const pay=Math.min(rest,+r.saldo); r.saldo=+(r.saldo-pay).toFixed(2); r.abono=+((+r.abono||0)+pay).toFixed(2); rest=+(rest-pay).toFixed(2); } });
+  saveEntregas();
+  const saldoFinal=Math.max(0,+(c.saldo-v).toFixed(2));
+  refrescar(); toast('Abono de '+money(v)+' registrado');
+  abrirRecibo({docTipo:'Recibo',recibo:'AB-'+Date.now().toString().slice(-6),tipo:'Abono a cuenta por cobrar',cliente:c.nombre,tel:c.tel||'',fecha:fechaHora(),metodo:'Abono',lineas:[{desc:'Abono a cuenta de '+c.nombre,cant:1,precio:v}],subtotal:v,ship:0,total:v,saldoPendiente:saldoFinal}); }
 
 
 /* === app2_8.js === */
@@ -1653,12 +1738,11 @@ document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id===
   }catch(e){}
 })();
 
-/* ---- Siembra automática del catálogo a la nube (Tienda + Tarjeta) si está vacía ---- */
-(function seedCloud(){ let tries=0; (function t(){
-  if(window.PGSync&&window.PGSync.ok&&window.PGSync.seedIfEmpty){
-    try{ const obj={}; PRODUCTOS.forEach(p=>obj[p.id]=prodToCloud(p)); window.PGSync.seedIfEmpty(obj); }catch(e){}
-  } else if(tries++<20){ setTimeout(t,300); }
-})(); })();
+/* ---- Reinicio desde cero: se DESACTIVA la siembra automática del catálogo demo.
+       El catálogo se llena solo con los productos reales que el usuario cree o publique
+       manualmente (botón "Publicar a Tienda y Tarjeta"). Así el sistema nunca vuelve a
+       cargar datos de ejemplo por su cuenta. ---- */
+(function seedCloud(){ /* desactivado a propósito para iniciar desde cero */ })();
 
 
 /* === app2_10.js — INGRESOS + PROMOCIONES (iteración 6) === */
@@ -1672,7 +1756,6 @@ function _ventasPOS(){ return VENTAS.filter(v=>!v.cloud); }
 function ingresosDesglose(){
   let ventasProd=0, envios=0, otros=0;
   _ventasPOS().forEach(v=>{ const sh=+v.ship||0; envios+=sh; ventasProd+=Math.max(0,(+v.total||0)-sh); });
-  PEDIDOS.forEach(p=>{ const sh=+p.ship||0; envios+=sh; ventasProd+=Math.max(0,(+p.total||0)-sh); });
   TRANSACCIONES.forEach(t=>{ const o=(t.origen||'').toLowerCase(), me=(t.metodo||'').toLowerCase(); if(o.includes('cobrar')||me.includes('abono')) otros+=+t.monto||0; });
   return { ventasProd:+ventasProd.toFixed(2), envios:+envios.toFixed(2), otros:+otros.toFixed(2), total:+(ventasProd+envios+otros).toFixed(2) };
 }
@@ -1680,8 +1763,7 @@ let _pieIng;
 RENDER.ingresos = function(){
   const d=ingresosDesglose();
   const filas=[];
-  _ventasPOS().forEach(v=>{ const sh=+v.ship||0; filas.push({rec:v.recibo,ori:'Punto de Venta',cli:v.cliente,venta:Math.max(0,(+v.total||0)-sh),env:sh,met:v.metodo||'—'}); });
-  PEDIDOS.forEach(p=>{ const sh=+p.ship||0; filas.push({rec:p.recibo,ori:p.origen,cli:p.cliente,venta:Math.max(0,(+p.total||0)-sh),env:sh,met:p.pago||'—'}); });
+  _ventasPOS().forEach(v=>{ const sh=+v.ship||0; filas.push({rec:v.recibo,ori:v.origen||'Punto de Venta',cli:v.cliente,venta:Math.max(0,(+v.total||0)-sh),env:sh,met:v.metodo||'—'}); });
   TRANSACCIONES.forEach(t=>{ const o=(t.origen||'').toLowerCase(), me=(t.metodo||'').toLowerCase(); if(o.includes('cobrar')||me.includes('abono')) filas.push({rec:t.recibo||'ABONO',ori:'Otros ingresos (abono)',cli:'—',venta:0,env:0,otro:+t.monto||0,met:t.metodo||'Abono'}); });
   const rows=filas.map(f=>`
     <tr class="border-b border-gray-100 hover:bg-pg-cream/60">
@@ -1716,7 +1798,92 @@ RENDER.ingresos = function(){
 /* ============================================================
    PROMOCIONES — reglas activas + progreso de fidelidad
    ============================================================ */
+
+/* ----- Edición: tramos de descuento por monto ----- */
+let _edTramos=[];
+function editarTramos(){
+  _edTramos = PROMOS.montos.map(t=>({min:t.min,pct:t.pct}));
+  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-percent text-pg-gold mr-2"></i>Descuento por monto de compra</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
+    <p class="text-[12px] text-pg-muted mb-3">Se aplica automáticamente según el subtotal. Define desde qué monto y qué porcentaje.</p>
+    <div id="edTramosBox" class="space-y-2"></div>
+    <button onclick="addTramoRow()" class="mt-3 text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold"><i class="fa-solid fa-plus mr-1"></i>Agregar tramo</button>
+    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarTramos()" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
+  renderTramosBox();
+}
+function renderTramosBox(){ const box=document.getElementById('edTramosBox'); if(!box)return; box.innerHTML=_edTramos.map((t,i)=>`
+    <div class="flex items-center gap-2">
+      <span class="text-[12px] text-pg-muted">Desde C$</span>
+      <input type="number" min="0" value="${t.min}" oninput="_edTramos[${i}].min=+this.value||0" class="w-28 px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-pg-gold">
+      <span class="text-[12px] text-pg-muted">→</span>
+      <input type="number" min="0" step="0.5" value="${t.pct}" oninput="_edTramos[${i}].pct=+this.value||0" class="w-20 px-2 py-1.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-pg-gold">
+      <span class="text-[12px] text-pg-muted">%</span>
+      <button onclick="_edTramos.splice(${i},1);renderTramosBox()" class="ml-auto w-7 h-7 rounded-md bg-red-100 text-red-600 hover:bg-red-200"><i class="fa-solid fa-trash"></i></button>
+    </div>`).join('')||'<p class="text-[12px] text-pg-muted">Sin tramos. Agregue al menos uno.</p>'; }
+function addTramoRow(){ _edTramos.push({min:0,pct:0}); renderTramosBox(); }
+function guardarTramos(){ const arr=_edTramos.filter(t=>(+t.min>=0)&&(+t.pct>0)).map(t=>({min:+t.min||0,pct:+t.pct||0})).sort((a,b)=>b.min-a.min); PROMOS.montos=arr; savePromos(); closeModal(); refrescar(); toast('Descuentos por monto actualizados'); }
+
+/* ----- Edición: premio de fidelidad (N.ª compra) ----- */
+function editarDecima(){
+  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-award text-pg-gold mr-2"></i>Premio de fidelidad</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="space-y-3 text-sm">
+      <div><label class="text-xs font-semibold">Cada cuántas compras se premia</label><input id="edDecCada" type="number" min="2" value="${PROMOS.decima.cada}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <div><label class="text-xs font-semibold">Descuento en esa compra (%)</label><input id="edDecPct" type="number" min="0" step="0.5" value="${PROMOS.decima.pct}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+    </div>
+    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarDecima()" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
+}
+function guardarDecima(){ const cada=Math.max(2,+document.getElementById('edDecCada').value||10); const pct=Math.max(0,+document.getElementById('edDecPct').value||0); PROMOS.decima={cada,pct}; savePromos(); closeModal(); refrescar(); toast('Premio de fidelidad actualizado'); }
+
+/* ----- Edición: puntos por monto ----- */
+function editarPuntos(){
+  const r=PROMOS.puntos||{cada:20,pts:1};
+  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-star text-pg-gold mr-2"></i>Puntos de fidelidad</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
+    <p class="text-[12px] text-pg-muted mb-3">Define cuántos puntos gana el cliente por cada monto de compra.</p>
+    <div class="space-y-3 text-sm">
+      <div><label class="text-xs font-semibold">Por cada compra de (C$)</label><input id="edPtsCada" type="number" min="1" value="${r.cada}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <div><label class="text-xs font-semibold">Otorgar (puntos)</label><input id="edPtsPts" type="number" min="0" value="${r.pts}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+    </div>
+    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarPuntos()" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
+}
+function guardarPuntos(){ const cada=Math.max(1,+document.getElementById('edPtsCada').value||20); const pts=Math.max(0,+document.getElementById('edPtsPts').value||0); PROMOS.puntos={cada,pts}; savePromos(); closeModal(); refrescar(); toast('Regla de puntos actualizada'); }
+
+/* ----- Edición: tipos de envío ----- */
+function nuevoEnvio(){ editarEnvio(null); }
+function editarEnvio(id){
+  const e = id ? envioById(id) : {id:'',nombre:'',costo:0,convenir:false,ir:false,nota:''};
+  openModal(`<div class="p-5"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-truck text-pg-gold mr-2"></i>${id?'Editar':'Nuevo'} tipo de envío</h3><button onclick="closeModal()" class="text-pg-muted"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="space-y-3 text-sm">
+      <div><label class="text-xs font-semibold">Nombre</label><input id="evNom" value="${esc(e.nombre)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <div class="grid grid-cols-2 gap-3"><div><label class="text-xs font-semibold">Costo (C$)</label><input id="evCosto" type="number" min="0" step="0.5" value="${e.costo}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      <div class="flex flex-col justify-end gap-1"><label class="flex items-center gap-2 text-[12px] font-semibold text-pg-green"><input id="evConv" type="checkbox" ${e.convenir?'checked':''}> Costo a convenir</label><label class="flex items-center gap-2 text-[12px] font-semibold text-pg-green"><input id="evIr" type="checkbox" ${e.ir?'checked':''}> Retener 2% I.R (&gt;C$1,000)</label></div></div>
+      <div><label class="text-xs font-semibold">Nota (aparece en el recibo/venta)</label><textarea id="evNota" rows="2" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold">${esc(e.nota||'')}</textarea></div>
+    </div>
+    <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarEnvio(${id?("'"+id+"'"):'null'})" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">Guardar</button></div></div>`);
+}
+function guardarEnvio(id){
+  const nom=document.getElementById('evNom').value.trim(); if(!nom){ toast('Ingrese el nombre del envío'); return; }
+  const costo=Math.max(0,+document.getElementById('evCosto').value||0);
+  const convenir=document.getElementById('evConv').checked;
+  const ir=document.getElementById('evIr').checked;
+  const nota=document.getElementById('evNota').value.trim();
+  if(id){ const e=envioById(id); e.nombre=nom; e.costo=costo; e.convenir=convenir; e.ir=ir; e.nota=nota; }
+  else { const nid='env'+Date.now(); ENVIOS.push({id:nid,nombre:nom,costo,convenir,ir,nota}); }
+  saveEnvios(); closeModal(); refrescar(); toast('Tipo de envío guardado');
+}
+function delEnvio(id){ if(ENVIOS.length<=1){ toast('Debe existir al menos un tipo de envío'); return; } const e=envioById(id); if(!confirm('¿Eliminar el envío "'+(e?e.nombre:id)+'"?'))return; ENVIOS=ENVIOS.filter(x=>x.id!==id); if(POS_ENVIO===id) POS_ENVIO=ENVIOS[0].id; saveEnvios(); refrescar(); toast('Tipo de envío eliminado'); }
 RENDER.promos = function(){
+  const pr=PROMOS.puntos||{cada:20,pts:1};
+  const envRows=ENVIOS.map(e=>`
+    <div class="flex items-start justify-between gap-3 bg-pg-cream/60 rounded-xl px-4 py-3">
+      <div class="min-w-0">
+        <p class="text-sm font-semibold text-pg-ink"><i class="fa-solid fa-truck text-pg-gold mr-2"></i>${esc(e.nombre)}</p>
+        <p class="text-[11px] text-pg-muted mt-0.5">${e.costo>0?('C$'+(+e.costo).toFixed(2)):'Gratis'}${e.convenir?' · a convenir':''}${e.ir?' · retiene 2% I.R':''}</p>
+        ${e.nota?`<p class="text-[11px] text-pg-muted mt-0.5">${esc(e.nota)}</p>`:''}
+      </div>
+      <div class="shrink-0 flex gap-1">
+        <button onclick="editarEnvio('${e.id}')" class="w-7 h-7 rounded-md bg-pg-gold/20 text-pg-gold2 hover:bg-pg-gold/40"><i class="fa-solid fa-pen"></i></button>
+        <button onclick="delEnvio('${e.id}')" class="w-7 h-7 rounded-md bg-red-100 text-red-600 hover:bg-red-200"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>`).join('');
   const reglaMonto=PROMOS.montos.slice().sort((a,b)=>a.min-b.min).map(t=>`
     <div class="flex items-center justify-between bg-pg-cream/60 rounded-xl px-4 py-3">
       <span class="text-sm text-pg-ink"><i class="fa-solid fa-tag text-pg-gold mr-2"></i>Compras desde <b>${money(t.min)}</b></span>
@@ -1749,15 +1916,25 @@ RENDER.promos = function(){
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-4">${proxList}</div>
   </div>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-    <div class="bg-white rounded-2xl shadow-soft p-5"><h3 class="font-bold text-pg-green mb-3"><i class="fa-solid fa-percent text-pg-gold mr-2"></i>Descuento por monto de compra</h3>
+    <div class="bg-white rounded-2xl shadow-soft p-5"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-percent text-pg-gold mr-2"></i>Descuento por monto de compra</h3><button onclick="editarTramos()" class="text-[11px] px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-pen mr-1"></i>Editar</button></div>
       <p class="text-[12px] text-pg-muted mb-3">Se aplica automáticamente en el Punto de Venta y en la Tienda en Línea según el subtotal de la compra.</p>
       <div class="space-y-2">${reglaMonto}</div></div>
-    <div class="bg-white rounded-2xl shadow-soft p-5"><h3 class="font-bold text-pg-green mb-3"><i class="fa-solid fa-award text-pg-gold mr-2"></i>Premio de fidelidad</h3>
+    <div class="bg-white rounded-2xl shadow-soft p-5"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-award text-pg-gold mr-2"></i>Premio de fidelidad</h3><button onclick="editarDecima()" class="text-[11px] px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-pen mr-1"></i>Editar</button></div>
       <div class="rounded-xl bg-gradient-to-br from-pg-green to-pg-green2 text-white p-5 text-center">
         <p class="text-4xl font-bold">${PROMOS.decima.pct}%</p>
         <p class="text-sm opacity-90 mt-1">de descuento en cada <b>${PROMOS.decima.cada}.ª compra</b> del cliente registrado</p>
       </div>
-      <p class="text-[12px] text-pg-muted mt-3"><i class="fa-solid fa-star text-pg-gold mr-1"></i>Además, cada compra suma <b>puntos de fidelidad</b> según los productos adquiridos.</p></div>
+      <p class="text-[12px] text-pg-muted mt-3"><i class="fa-solid fa-star text-pg-gold mr-1"></i>Además, cada compra suma <b>puntos de fidelidad</b> según el monto de compra.</p></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+    <div class="bg-white rounded-2xl shadow-soft p-5"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-star text-pg-gold mr-2"></i>Puntos de fidelidad</h3><button onclick="editarPuntos()" class="text-[11px] px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-pen mr-1"></i>Editar</button></div>
+      <div class="rounded-xl bg-pg-cream/60 p-5 text-center">
+        <p class="text-2xl font-bold text-pg-green">${pr.pts} punto${pr.pts==1?'':'s'}</p>
+        <p class="text-sm text-pg-muted mt-1">por cada <b>${money(pr.cada)}</b> de compra</p>
+      </div>
+      <p class="text-[12px] text-pg-muted mt-3">Los puntos se otorgan al cliente registrado y se acumulan en su Tarjeta de Fidelidad.</p></div>
+    <div class="bg-white rounded-2xl shadow-soft p-5"><div class="flex items-center justify-between mb-3"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-truck text-pg-gold mr-2"></i>Tipos de envío</h3><button onclick="nuevoEnvio()" class="text-[11px] px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-plus mr-1"></i>Nuevo</button></div>
+      <div class="space-y-2">${envRows||'<p class="text-[12px] text-pg-muted">Sin tipos de envío.</p>'}</div></div>
   </div>
   <div class="bg-white rounded-2xl shadow-soft"><div class="px-5 py-4 border-b border-gray-100"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-users text-pg-gold mr-2"></i>Progreso de fidelidad de clientes</h3></div>
     <div class="overflow-x-auto"><table class="w-full text-sm">
@@ -1770,6 +1947,5 @@ RENDER.promos = function(){
 
 <!-- Puente de escritorio: base de datos local (SQLite), sincronizacion y exportacion PDF/Excel.
      Solo se activa dentro de la app de escritorio; en el navegador no cambia nada. -->
-
 </body>
 </html>

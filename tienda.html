@@ -651,7 +651,7 @@ footer{background-color:var(--primary-dark);color:var(--white);padding:24px 0 40
           <i class="fab fa-whatsapp"></i> Confirmar Pedido por WhatsApp
         </button>
         <button id="btn-recibo" class="btn-action btn-recibo" onclick="generarRecibo()" disabled>
-          <i class="fas fa-print"></i> Generar e Imprimir Recibo
+          <i class="fas fa-print"></i> Generar e Imprimir Factura
         </button>
 
         <div class="qr-payment">
@@ -954,7 +954,7 @@ footer{background-color:var(--primary-dark);color:var(--white);padding:24px 0 40
 <div id="receipt-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header no-print">
-      <h3 style="font-family:'Fraunces',serif;color:var(--primary);font-size:16px">Recibo Oficial de Orden</h3>
+      <h3 style="font-family:'Fraunces',serif;color:var(--primary);font-size:16px">Factura Oficial de Orden</h3>
       <button class="btn-close-modal" onclick="closeReceipt()">X</button>
     </div>
     <div id="rec-body" style="font-size:12px;font-family:monospace;color:#333;line-height:1.4"></div>
@@ -1420,7 +1420,7 @@ function msg(d){
       selZona=$('zona-envio'),
       nombreZona=selZona.options[selZona.selectedIndex].getAttribute('data-nombre')||'',
       dir=$('cliente-dir').value.trim()||'Retiro en Sucursal',
-      m='*PRODUCTOS GLOBALES DEL CAMPO*%0A====================%0A*RECIBO:* '+d.num+'%0A*CLIENTE:* '+d.name+'%0A*C\u00d3DIGO:* '+d.tel+'%0A*MODALIDAD:* '+(t.modo==='credito'?'VENTA A CR\u00c9DITO':'VENTA AL CONTADO')+'%0A';
+      m='*PRODUCTOS GLOBALES DEL CAMPO*%0A====================%0A*FACTURA:* '+d.num+'%0A*CLIENTE:* '+d.name+'%0A*C\u00d3DIGO:* '+d.tel+'%0A*MODALIDAD:* '+(t.modo==='credito'?'VENTA A CR\u00c9DITO':'VENTA AL CONTADO')+'%0A';
   if(t.modo==='contado')m+='*M\u00c9TODO DE PAGO:* '+(t.metodo==='lafise'?'Transferencia / QR LAFISE Bancentro':'Pago Contra Entrega (Efectivo / Transferencia al recibir)')+'%0A';
   m+='%0A*PRODUCTOS:*%0A';
   carrito.forEach(function(i){m+='\u2022 '+i.n+' \u2014 '+i.q+' \u00d7 C$'+i.price.toFixed(2)+'%0A'});
@@ -1467,7 +1467,7 @@ window.generarRecibo=async function(){
       '<div style="text-align:center;font-size:10px">R\u00daC: 0452907730000U</div>'+
       '<div style="text-align:center;font-size:9.5px;font-weight:bold;margin-bottom:2px">R\u00e9gimen de Cuota Fija</div>'+
       '<div style="text-align:center;font-size:10px;margin-bottom:8px">Jinotepe, Carazo, Nicaragua</div>'+
-      '<div style="margin-bottom:3px"><strong>No. Recibo:</strong> '+num+'</div>'+
+      '<div style="margin-bottom:3px"><strong>No. Factura:</strong> '+num+'</div>'+
       '<div style="margin-bottom:6px"><strong>Fecha Emisi\u00f3n:</strong> '+new Date().toLocaleDateString('es-NI')+'</div>'+
       '<hr style="border:none;border-top:1px dashed #ccc;margin:6px 0">'+
       '<div style="margin-bottom:6px"><strong>Cliente:</strong> '+E(name)+'<br><strong>Tel\u00e9fono:</strong> '+E(tel)+'<br><strong>Direcci\u00f3n:</strong> '+E(dir)+'<br><strong>Despacho:</strong> '+E(nombreZona)+'</div>'+
@@ -1501,7 +1501,7 @@ window.generarRecibo=async function(){
     $('cliente-dir').value='';
     calc();
   }catch(e){
-    alert('No se pudo generar el recibo: '+e.message);
+    alert('No se pudo generar la factura: '+e.message);
   }
 };
 

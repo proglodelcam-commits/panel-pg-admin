@@ -759,7 +759,7 @@ body { background-color: var(--bg-cream); color: var(--text-dark); line-height: 
             Confirmar Pedido por WhatsApp
           </button>
           <button id="btn-recibo" class="btn-action btn-recibo" onclick="generarEImprimirRecibo()" disabled>
-            Generar e Imprimir Recibo
+            Generar e Imprimir Factura
           </button>
         </div>
       </div>
@@ -782,7 +782,7 @@ body { background-color: var(--bg-cream); color: var(--text-dark); line-height: 
 <div id="receipt-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header no-print">
-      <h3 style="font-family: 'Fraunces', serif; color:var(--primary);">Recibo Oficial de Orden</h3>
+      <h3 style="font-family: 'Fraunces', serif; color:var(--primary);">Factura Oficial de Orden</h3>
       <button class="btn-close-modal" onclick="cerrarModalRecibo()">X</button>
     </div>
 
@@ -792,7 +792,7 @@ body { background-color: var(--bg-cream); color: var(--text-dark); line-height: 
       <div style="text-align:center; font-size:10px; font-weight:bold; margin-bottom:2px;">Régimen de Cuota Fija</div>
       <div style="text-align:center; font-size:10.5px; margin-bottom:8px;">Jinotepe, Carazo, Nicaragua</div>
 
-      <div style="margin-bottom:4px;"><strong>No. Recibo:</strong> <span id="rec-num">0000000</span></div>
+      <div style="margin-bottom:4px;"><strong>No. Factura:</strong> <span id="rec-num">0000000</span></div>
       <div style="margin-bottom:8px;"><strong>Fecha Emisión:</strong> <span id="rec-date">--/--/----</span></div>
       <hr style="border:none; border-top:1px dashed #ccc; margin:8px 0;">
 
@@ -1256,7 +1256,7 @@ window.procesarPagoWhatsApp = async function() {
 
   let msj = '*NUEVO PEDIDO - PG DEL CAMPO*\n';
   msj += '=============================\n';
-  msj += `*Recibo N°:* ${numeroReciboFormateado}\n`;
+  msj += `*Factura N°:* ${numeroReciboFormateado}\n`;
   msj += `*Cliente:* ${cliente}\n`;
   msj += `*Teléfono:* ${telf}\n`;
   msj += '=============================\n\n';
