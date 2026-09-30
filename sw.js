@@ -1,124 +1,96 @@
-// ═══════════════════════════════════════════════════════
-// PG del Campo — Service Worker Unificado (GitHub Pages PWA)
-// Versión: 3.0 — index.html ahora Network-First (recibe actualizaciones)
-// ═══════════════════════════════════════════════════════
-const CACHE_NAME = 'pg-del-campo-v3';
-// Assets locales a pre-cachear durante la instalación
-const PRECACHE_ASSETS = [
+/* Service worker PG del Campo - version corregida
+   Estrategia:
+   - Paginas HTML (navegacion): RED PRIMERO. Si hay internet, siempre trae la
+     version fresca (nunca sirve una pagina en blanco cacheada). Si no hay
+     internet, cae al cache.
+   - Recursos estaticos (vendor/, imagenes, css, js): CACHE PRIMERO, con
+     actualizacion en segundo plano.
+   - CACHE_VERSION versionado: al cambiar el numero se borran los caches viejos
+     automaticamente en la siguiente carga.
+*/
+const CACHE_VERSION = 'pg-campo-v3';
+const STATIC_CACHE  = CACHE_VERSION + '-static';
+const PAGES_CACHE   = CACHE_VERSION + '-pages';
+
+// Recursos que conviene precachear (ajusta si agregas/quitas librerias).
+const PRECACHE = [
   './',
   './index.html',
+  './panel.html',
   './tienda.html',
-  './fidelidad.html',
-  './admin.html',
-  './enlaces.html',
-  './manifest.webmanifest',
-  './favicon.ico',
-  './icons/favicon.png',
-  './icons/favicon-16x16.png',
-  './icons/favicon-32x32.png',
-  './icons/favicon-48x48.png',
-  './icons/apple-touch-icon.png',
-  './icons/android-chrome-192x192.png',
-  './icons/android-chrome-512x512.png'
+  './tarjeta-fidelidad.html',
+  './vendor/tailwind.js',
+  './vendor/chart.umd.min.js',
+  './vendor/qrcode.min.js',
+  './vendor/fontawesome/css/all.min.css',
+  './vendor/fonts/fonts.css'
 ];
-// Dominios externos que cacheamos como runtime
-const RUNTIME_CACHE_HOSTS = [
-  'fonts.googleapis.com',
-  'fonts.gstatic.com',
-  'cdnjs.cloudflare.com',
-  'www.gstatic.com',
-  'cdn.jsdelivr.net',
-  'api.qrserver.com'
-];
-// ── INSTALL: pre-cachea todos los assets locales ──
-self.addEventListener('install', event => {
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('[SW] Pre-cacheando assets locales');
-        return cache.addAll(PRECACHE_ASSETS);
-      })
-      .then(() => self.skipWaiting())
+    caches.open(STATIC_CACHE).then((cache) =>
+      // addAll falla si UN recurso da 404; usamos add individual tolerante
+      Promise.all(PRECACHE.map((url) =>
+        cache.add(url).catch(() => { /* ignorar recursos faltantes */ })
+      ))
+    )
   );
 });
-// ── ACTIVATE: limpia caches viejas y toma control ──
-self.addEventListener('activate', event => {
+
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys =>
+    caches.keys().then((keys) =>
       Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => {
-          console.log('[SW] Eliminando cache vieja:', k);
-          return caches.delete(k);
-        })
+        keys
+          .filter((k) => k !== STATIC_CACHE && k !== PAGES_CACHE)
+          .map((k) => caches.delete(k))
       )
     ).then(() => self.clients.claim())
   );
 });
-// ── FETCH ──
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  // Solo interceptar GET requests
-  if (event.request.method !== 'GET') return;
-  // Firebase RTDB: NO cachear (datos en tiempo real)
-  if (url.hostname.includes('firebaseio.com') || url.hostname.includes('firebasedatabase.app')) return;
 
-  // Recursos locales
-  if (url.origin === self.location.origin) {
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
 
-    // HTML / navegación: NETWORK-FIRST (siempre trae la última versión publicada)
-    if (event.request.mode === 'navigate' ||
-        url.pathname === '/' || url.pathname.endsWith('/') ||
-        url.pathname.endsWith('.html')) {
-      event.respondWith(
-        fetch(event.request).then(response => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          }
-          return response;
-        }).catch(() =>
-          caches.match(event.request).then(cached => cached || caches.match('./index.html'))
-        )
-      );
-      return;
-    }
+  const url = new URL(req.url);
+  // No interceptar Firebase / dominios externos: dejar pasar a la red.
+  if (url.origin !== self.location.origin) return;
 
-    // Resto de estáticos (íconos, favicon, manifest…): Cache-First
+  const isPage =
+    req.mode === 'navigate' ||
+    (req.headers.get('accept') || '').includes('text/html');
+
+  if (isPage) {
+    // RED PRIMERO para paginas: evita servir HTML en blanco cacheado.
     event.respondWith(
-      caches.match(event.request).then(cached => {
-        if (cached) return cached;
-        return fetch(event.request).then(response => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-          }
-          return response;
-        }).catch(() => {
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-        });
-      })
-    );
-    return;
-  }
-
-  // Recursos externos (CDNs): Stale-While-Revalidate
-  if (RUNTIME_CACHE_HOSTS.some(h => url.hostname.includes(h))) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(cache =>
-        cache.match(event.request).then(cached => {
-          const fetchPromise = fetch(event.request).then(response => {
-            if (response.ok) {
-              cache.put(event.request, response.clone());
-            }
-            return response;
-          }).catch(() => cached);
-          return cached || fetchPromise;
+      fetch(req)
+        .then((resp) => {
+          const copy = resp.clone();
+          caches.open(PAGES_CACHE).then((c) => c.put(req, copy));
+          return resp;
         })
-      )
+        .catch(() =>
+          caches.match(req).then((c) => c || caches.match('./index.html'))
+        )
     );
     return;
   }
-  // Otros recursos: Network only
+
+  // CACHE PRIMERO para estaticos (vendor, imagenes, etc.)
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      const network = fetch(req)
+        .then((resp) => {
+          if (resp && resp.status === 200) {
+            const copy = resp.clone();
+            caches.open(STATIC_CACHE).then((c) => c.put(req, copy));
+          }
+          return resp;
+        })
+        .catch(() => cached);
+      return cached || network;
+    })
+  );
 });
