@@ -8,17 +8,17 @@
    - CACHE_VERSION versionado: al cambiar el numero se borran los caches viejos
      automaticamente en la siguiente carga.
 */
-const CACHE_VERSION = 'pg-campo-v3';
+const CACHE_VERSION = 'pg-campo-v4';
 const STATIC_CACHE  = CACHE_VERSION + '-static';
 const PAGES_CACHE   = CACHE_VERSION + '-pages';
 
 // Recursos que conviene precachear (ajusta si agregas/quitas librerias).
+// Tienda y Tarjeta se enlazan por URL absoluta (repos independientes).
+// No se cachean aqui porque NO estan en este repo.
 const PRECACHE = [
   './',
   './index.html',
   './panel.html',
-  './tienda.html',
-  './tarjeta-fidelidad.html',
   './vendor/tailwind.js',
   './vendor/chart.umd.min.js',
   './vendor/qrcode.min.js',
