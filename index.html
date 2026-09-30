@@ -76,7 +76,7 @@
       </div>
       <div class="flex items-center gap-4">
         <span class="hidden sm:block text-xs text-pg-muted"><i class="fa-regular fa-calendar mr-1"></i><span id="todayDate"></span></span>
-        <div class="flex items-center gap-2"><div class="w-9 h-9 rounded-full bg-pg-leaf/20 flex items-center justify-center text-pg-green"><i class="fa-solid fa-user"></i></div><div class="hidden sm:block leading-tight"><p class="text-xs font-semibold text-pg-ink">Administrador</p><p class="text-[10px] text-pg-muted">Régimen Cuota Fija</p></div></div>
+        <div class="flex items-center gap-2"><div id="profileAvatar" class="w-9 h-9 rounded-full bg-pg-leaf/20 flex items-center justify-center text-pg-green overflow-hidden"><i class="fa-solid fa-user"></i></div><div class="hidden sm:block leading-tight"><p id="profileName" class="text-xs font-semibold text-pg-ink">Administrador</p><p id="profileRole" class="text-[10px] text-pg-muted">Régimen Cuota Fija</p></div></div>
       </div>
     </header>
     <main id="mainViews" class="flex-1 p-4 lg:p-8"></main>
@@ -340,15 +340,38 @@ const MENU = [
 ];
 let VISTA='inicio';
 const RENDER = {};
+let _fotoTmp=null;
+
+/* ---------- Permisos por rol ----------
+   '*' = acceso total. Los demás roles solo ven los módulos listados. */
+const ROLE_PERMS = {
+  'Administrador': '*',
+  'admin': '*',
+  'Ventas':     ['inicio','vender','pedidos','catalogo','clientes','cupon','promos','transacciones'],
+  'Inventario': ['inicio','inventario','catalogo','anuncios','pedidos'],
+  'Finanzas':   ['inicio','finanzas','ingresos','cxc','transacciones','estadisticas','reportes']
+};
+function rolActual(){ return (window.USUARIO_ACTUAL&&window.USUARIO_ACTUAL.rol)||'Administrador'; }
+function menuPermitido(){ const p=ROLE_PERMS[rolActual()]; if(p==='*'||!p) return MENU; return MENU.filter(m=>p.indexOf(m.id)>=0); }
+function puedeVer(id){ const p=ROLE_PERMS[rolActual()]; return p==='*'||!p||p.indexOf(id)>=0; }
+function updateProfileUI(){
+  const u=window.USUARIO_ACTUAL||{};
+  const nm=document.getElementById('profileName'); if(nm) nm.textContent=u.nombre||u.usuario||'Usuario';
+  const rl=document.getElementById('profileRole'); if(rl) rl.textContent=(u.rol==='admin'?'Administrador':(u.rol||''));
+  const av=document.getElementById('profileAvatar');
+  if(av){ if(u.foto&&/^data:image\//.test(u.foto)){ av.innerHTML='<img src="'+u.foto+'" alt="" class="w-full h-full object-cover">'; } else { av.innerHTML='<i class="fa-solid fa-user"></i>'; } }
+}
 
 function buildMenu(){
-  document.getElementById('navMenu').innerHTML = MENU.map(m=>`
+  document.getElementById('navMenu').innerHTML = menuPermitido().map(m=>`
     <a onclick="go('${m.id}')" data-m="${m.id}" class="sidebar-link flex items-center gap-3 px-5 py-2.5 border-l-4 border-transparent hover:bg-white/5 cursor-pointer">
       <i class="fa-solid ${m.i} w-5 text-center text-pg-leaf"></i> ${m.t}
     </a>`).join('');
   document.getElementById('mainViews').innerHTML = MENU.map(m=>`<section id="view-${m.id}" class="view"></section>`).join('');
+  updateProfileUI();
 }
 function go(id){
+  if(!puedeVer(id)){ id=(menuPermitido()[0]||{id:'inicio'}).id; }
   VISTA=id;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
@@ -1823,7 +1846,7 @@ function repClientes(){ dl('clientes.csv',[['Nombre','Telefono','Tarjeta','Compr
 RENDER.usuarios = function(){
   const rows=USUARIOS.map((u,i)=>`
     <tr class="border-b border-gray-100 hover:bg-pg-cream/60">
-      <td class="px-3 py-2"><b>${esc(u.nombre)}</b></td><td class="px-3 py-2 font-mono text-[12px]">${esc(u.usuario)}</td>
+      <td class="px-3 py-2"><div class="flex items-center gap-2"><span class="w-8 h-8 rounded-full bg-pg-leaf/20 flex items-center justify-center text-pg-green overflow-hidden shrink-0">${(u.foto&&/^data:image\//.test(u.foto))?('<img src="'+u.foto+'" class="w-full h-full object-cover">'):'<i class="fa-solid fa-user text-xs"></i>'}</span><b>${esc(u.nombre)}</b></div></td><td class="px-3 py-2 font-mono text-[12px]">${esc(u.usuario)}</td>
       <td class="px-3 py-2 font-mono text-[12px] text-pg-muted">${'\u2022'.repeat(Math.min(8,(u.clave||'').length||4))}</td>
       <td class="px-3 py-2"><span class="text-[11px] px-2 py-0.5 rounded-full bg-pg-gold/20 text-pg-gold2">${u.rol}</span></td>
       <td class="px-3 py-2 text-center"><span class="text-[11px] px-2 py-0.5 rounded-full ${u.activo?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}">${u.activo?'Activo':'Inactivo'}</span></td>
@@ -1839,9 +1862,27 @@ function toggleUsuario(i){ USUARIOS[i].activo=!USUARIOS[i].activo; saveUsuarios(
 function delUsuario(i){ if(!confirm('¿Eliminar usuario '+USUARIOS[i].usuario+'?'))return; USUARIOS.splice(i,1); saveUsuarios(); refrescar(); toast('Usuario eliminado'); }
 function nuevoUsuario(){ editarUsuario(-1); }
 function togglePass(btn){ const p=document.getElementById('uPas'); if(!p)return; p.type=(p.type==='password')?'text':'password'; btn.innerHTML=(p.type==='password')?'<i class="fa-solid fa-eye"></i>':'<i class="fa-solid fa-eye-slash"></i>'; }
+function previewFoto(input){
+  const f=input.files&&input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      const max=128; let w=img.width,h=img.height;
+      if(w>h){ if(w>max){ h=Math.round(h*max/w); w=max; } } else { if(h>max){ w=Math.round(w*max/h); h=max; } }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      _fotoTmp=c.toDataURL('image/jpeg',0.82);
+      const pv=document.getElementById('uFotoPrev'); if(pv) pv.innerHTML='<img src="'+_fotoTmp+'" class="w-full h-full object-cover">';
+    };
+    img.src=e.target.result;
+  };
+  r.readAsDataURL(f);
+}
 function editarUsuario(i){
   const nuevo=(i<0);
   const u=nuevo?{nombre:'',usuario:'',clave:'',rol:'Administrador',activo:true}:USUARIOS[i];
+  _fotoTmp=(u.foto||null);
   const roles=['Administrador','Ventas','Inventario','Finanzas'];
   const opts=roles.map(r=>`<option ${u.rol===r?'selected':''}>${r}</option>`).join('');
   const bloqUsr=(!nuevo&&u.usuario==='admin');
@@ -1853,6 +1894,12 @@ function editarUsuario(i){
         <div class="relative"><input id="uPas" type="password" value="${esc(u.clave||'')}" placeholder="${nuevo?'Defina una contraseña':'Deje igual o escriba una nueva'}" class="w-full mt-1 px-3 py-2 pr-10 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold">
         <button type="button" onclick="togglePass(this)" class="absolute right-2 top-1/2 -translate-y-1/2 text-pg-muted text-xs"><i class="fa-solid fa-eye"></i></button></div></div>
       <div><label class="text-xs font-semibold">Rol</label><select id="uRol" ${bloqUsr?'disabled':''} class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200">${opts}</select></div>
+      <div><label class="text-xs font-semibold">Foto del usuario</label>
+        <div class="flex items-center gap-3 mt-1">
+          <div id="uFotoPrev" class="w-14 h-14 rounded-full bg-pg-leaf/20 flex items-center justify-center text-pg-green overflow-hidden shrink-0">${(u.foto&&/^data:image\//.test(u.foto))?('<img src="'+u.foto+'" class="w-full h-full object-cover">'):'<i class="fa-solid fa-user"></i>'}</div>
+          <input id="uFoto" type="file" accept="image/*" onchange="previewFoto(this)" class="text-[11px]">
+        </div>
+        <p class="text-[10px] text-pg-muted mt-1">Se mostrará en el perfil al iniciar sesión con este usuario.</p></div>
     </div>
     <div class="flex gap-2 mt-5"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="guardarUsuario(${i})" class="flex-1 py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold">${nuevo?'Crear usuario':'Guardar cambios'}</button></div></div>`);
 }
@@ -1867,14 +1914,15 @@ function guardarUsuario(i){
   const dup=USUARIOS.find((x,idx)=>idx!==i && x.usuario.toLowerCase()===usr.toLowerCase());
   if(dup){ toast('Ya existe un usuario con ese nombre de acceso'); return; }
   if(nuevo){
-    USUARIOS.push({ id:'U'+(Date.now()%100000), nombre:nom, usuario:usr, clave:pas, rol, activo:true });
+    USUARIOS.push({ id:'U'+(Date.now()%100000), nombre:nom, usuario:usr, clave:pas, rol, activo:true, foto:(_fotoTmp||'') });
     toast('Usuario creado');
   } else {
     const u=USUARIOS[i];
     if(u.usuario!=='admin') u.usuario=usr;
     u.nombre=nom; if(u.usuario!=='admin') u.rol=rol;
     if(pas!=='') u.clave=pas;
-    if(window.USUARIO_ACTUAL&&window.USUARIO_ACTUAL.id===u.id) window.USUARIO_ACTUAL=u;
+    u.foto=(_fotoTmp||u.foto||'');
+    if(window.USUARIO_ACTUAL&&window.USUARIO_ACTUAL.id===u.id){ window.USUARIO_ACTUAL=u; buildMenu(); go(VISTA); }
     toast('Usuario actualizado');
   }
   saveUsuarios(); closeModal(); refrescar();
