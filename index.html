@@ -148,9 +148,32 @@ const fechaHora = () => new Date().toLocaleString('es-NI',{day:'2-digit',month:'
 const EMPRESA = {
   nombre:'Productos Globales del Campo', marca:'PG del Campo', lema:'Del campo a su mesa', lugar:'Jinotepe, Carazo, Nicaragua',
   ruc:'0452907730000U', regimen:'Cuota Fija', titular:'Fernando Martínez (Rep. Legal)', tel:'+505 5797 3097',
-  banco:'Banco LaFise', cuenta:'140051265', ach:'5797 3097', whatsapp:'57973097'
+  banco:'Banco LaFise', cuenta:'140051265', ach:'5797 3097', whatsapp:'57973097',
+  mision:'Llevar productos naturales y de calidad del campo nicaragüense directamente a su mesa, con sabor auténtico y tradición.',
+  vision:'Ser la marca referente en productos naturales del campo nicaragüense, reconocida por calidad, tradición y servicio al cliente.',
+  email:'proglodelcam@gmail.com',
+  direccion:'Km 38 Carretera Jinotepe a San Marcos',
+  horarios:[
+    {dia:'Lunes',horario:'Cerrado'},{dia:'Martes',horario:'5:30 p.m. – 11:00 p.m.'},
+    {dia:'Miércoles',horario:'5:30 p.m. – 1:00 a.m.'},{dia:'Jueves',horario:'5:30 p.m. – 11:00 p.m.'},
+    {dia:'Viernes',horario:'6:00 p.m. – 2:00 a.m.'},{dia:'Sábado',horario:'6:00 p.m. – 4:00 a.m.'},
+    {dia:'Domingos',horario:'Cerrado'}
+  ],
+  enlaceKyte:'https://proglodelcampo.catalog.kyte.site/',
+  enlaceAgente:'https://business-card.io/c/2c023cba-0548-485c-9285-80d553459cdd/',
+  enlaceTarjetaFidelidad:'https://proglodelcam-commits.github.io/tarjeta-fidelidad/',
+  enlacePagoQR:'https://digital.lafise.com/?BANK=BLNI&ACCOUNT_NUMBER=140051265'
 };
 const PAGO = EMPRESA;
+
+/* ---------- PERSISTENCIA DE DATOS DE EMPRESA (localStorage + Firebase) ---------- */
+function loadEmpresa(){ try{ const s=localStorage.getItem('pg_empresa'); if(s){ const o=JSON.parse(s); if(o&&typeof o==='object') Object.assign(EMPRESA,o); } }catch(e){} }
+function saveEmpresa(){
+  try{ localStorage.setItem('pg_empresa',JSON.stringify(EMPRESA)); }catch(e){}
+  if(window.PGSync&&window.PGSync.ok&&window.PGSync.setAt){ try{ window.PGSync.setAt('config/empresa',EMPRESA); }catch(e){} }
+}
+function mergeCloudEmpresa(d){ if(d&&typeof d==='object'&&Object.keys(d).length){ Object.assign(EMPRESA,d); try{ localStorage.setItem('pg_empresa',JSON.stringify(EMPRESA)); }catch(e){} if(typeof VISTA!=='undefined'&&VISTA==='empresa'&&typeof refrescar==='function') refrescar(); } }
+loadEmpresa();
 
 /* ---------- TIPOS DE ENVÍO (editables) ---------- */
 const ZONAS_DOMICILIO = ['Jinotepe','Dolores','Diriamba','San Marcos'];
@@ -233,6 +256,8 @@ function bannerAlertaDecima(){
 /* ---------- Utilidades de imagen (galería / Google Drive / Kyte) ---------- */
 const DRIVE_FOLDER = 'https://drive.google.com/drive/folders/177wP-bxy9qY7ttcPUJ6XnSApvHOi5_ny?hl=es-419';
 const KYTE_STORE   = 'https://proglodelcampo.catalog.kyte.site';
+const KYTE_SEED    = {'café del campo clásico 400gr':'https://proglodelcampo.catalog.kyte.site/1726850058622-jzVca'};
+function kyteDe(p){ var u=(p&&p.kyteUrl)||''; if(u&&u.trim()) return u.trim(); var n=((p&&p.nombre)||'').trim().toLowerCase(); return KYTE_SEED[n]||KYTE_STORE; }
 // Convierte un enlace de Google Drive a URL directa de imagen utilizable en <img>
 function driveDirect(url){
   if(!url) return url;
@@ -696,7 +721,7 @@ RENDER.catalogo = function(){
   const cards=PRODUCTOS.map(p=>{ const st=stockState(p), m=STOCK_META[st]; return `
     <div class="bg-white rounded-2xl shadow-soft overflow-hidden border border-gray-100">
       <div class="flex items-center gap-3 p-4">
-        <div class="w-12 h-12 rounded-xl bg-pg-leaf/15 flex items-center justify-center text-xl text-pg-green overflow-hidden shrink-0">${p.imagen?`<img src="${esc(p.imagen)}" class="w-full h-full object-cover" onerror="this.outerHTML='<i class=\'fa-solid ${p.icon}\'></i>'">`:`<i class="fa-solid ${p.icon}"></i>`}</div>
+        <a href="${esc(kyteDe(p))}" target="_blank" rel="noopener" title="Ver este producto en Kyte" class="w-12 h-12 rounded-xl bg-pg-leaf/15 flex items-center justify-center text-xl text-pg-green overflow-hidden shrink-0 hover:ring-2 hover:ring-pg-gold transition">${p.imagen?`<img src="${esc(p.imagen)}" class="w-full h-full object-cover" onerror="this.outerHTML='<i class=\'fa-solid ${p.icon}\'></i>'">`:`<i class="fa-solid ${p.icon}"></i>`}</a>
         <div class="min-w-0 flex-1"><p class="font-semibold text-pg-ink text-sm truncate">${esc(p.nombre)}</p><p class="text-[11px] text-pg-muted">${esc(p.cat)} · ${p.id}</p></div>
         <span class="text-[10px] px-2 py-0.5 rounded-full ${p.online?'bg-pg-leaf/20 text-pg-green':'bg-gray-100 text-gray-500'}"><i class="fa-solid ${p.online?'fa-globe':'fa-eye-slash'}"></i> ${p.online?'En línea':'Oculto'}</span>
       </div>
@@ -726,6 +751,7 @@ RENDER.catalogo = function(){
     <span class="text-[11px] text-pg-muted mr-1"><i class="fa-solid fa-cloud text-pg-gold"></i> Inventario compartido con la Tienda en Línea y la Tarjeta de Fidelidad</span>
     <button onclick="syncPull()" class="text-xs px-3 py-1.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white font-semibold"><i class="fa-solid fa-cloud-arrow-down mr-1"></i> Traer de la nube</button>
     <button onclick="syncPush()" class="text-xs px-3 py-1.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white font-semibold"><i class="fa-solid fa-cloud-arrow-up mr-1"></i> Publicar a Tienda y Tarjeta</button>
+    <label title="Lee un archivo CSV exportado de Kyte y actualiza/crea productos en el panel" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer"><i class="fa-solid fa-file-import mr-1"></i> Importar desde archivo de Kyte<input type="file" accept=".csv,text/csv,text/plain" class="hidden" onchange="importarKyte(this)"></label>
     <button onclick="resetTodo()" class="text-xs px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"><i class="fa-solid fa-trash-can-arrow-up mr-1"></i> Reiniciar desde cero</button>
     <span id="syncStatus" class="text-[11px] text-pg-muted ml-auto">${SYNC_MSG}</span>
   <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">${cards}</div>`;
@@ -735,7 +761,7 @@ let FIMG='';
 let SYNC_MSG='Conectando con la nube…';
 function formProducto(p){
   const isNew=!p;
-  p=p||{id:'',nombre:'',cat:'Café',precio:'',costo:'',stock:'',min:'',control:true,online:true,puntos:'',icon:'fa-box',imagen:''};
+  p=p||{id:'',nombre:'',cat:'Café',precio:'',costo:'',stock:'',min:'',control:true,online:true,puntos:'',icon:'fa-box',imagen:'',kyteUrl:''};
   FIMG=p.imagen||'';
   const iconOpts=ICONS.map(ic=>`<option value="${ic}" ${p.icon===ic?'selected':''}>${ic.replace('fa-','')}</option>`).join('');
   openModal(`
@@ -766,6 +792,7 @@ function formProducto(p){
             <p class="text-[10px] text-pg-muted mt-1">Sugerencia: en Google Drive comparte la imagen como “cualquier persona con el enlace” y pégala aquí; se convierte automáticamente a enlace directo.</p>
           </div>
         </div>
+        <div><label class="text-xs font-semibold"><i class="fa-solid fa-link text-pg-gold mr-1"></i>Enlace Kyte del producto</label><input id="fKyte" value="${esc(p.kyteUrl||'')}" placeholder="https://proglodelcampo.catalog.kyte.site/..." class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 text-[12px] focus:outline-none focus:border-pg-gold"><p class="text-[10px] text-pg-muted mt-1">Al tocar la imagen del producto se abrirá este enlace (en el panel, la tienda y la tarjeta). Si se deja vacío, abre la tienda general.</p></div>
         <div class="grid grid-cols-2 gap-3">
           <div><label class="text-xs font-semibold">Categoría</label><input id="fCat" value="${esc(p.cat)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
           <div><label class="text-xs font-semibold">Ícono</label><select id="fIcon" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold">${iconOpts}</select></div>
@@ -797,7 +824,7 @@ function guardarProducto(id){
   const urlField=(g('fImgUrl')&&g('fImgUrl').value.trim())?driveDirect(g('fImgUrl').value.trim()):FIMG;
   const data={ nombre:g('fNom').value.trim(), cat:g('fCat').value.trim()||'General', icon:g('fIcon').value,
     precio:+g('fPre').value||0, costo:+g('fCos').value||0, stock:+g('fStk').value||0, min:+g('fMin').value||0,
-    puntos:+g('fPts').value||0, control:g('fCtrl').checked, online:g('fOn').checked, imagen:urlField||'' };
+    puntos:+g('fPts').value||0, control:g('fCtrl').checked, online:g('fOn').checked, imagen:urlField||'', kyteUrl:(g('fKyte')&&g('fKyte').value.trim())||'' };
   if(!data.nombre){ toast('Ingrese el nombre'); return; }
   let pid=id;
   if(id){ const p=PRODUCTOS.find(x=>x.id===id); Object.assign(p,data); toast('Producto actualizado'); }
@@ -826,8 +853,8 @@ function toggleOnline(id){ const p=PRODUCTOS.find(x=>x.id===id); if(!p)return; p
    SINCRONIZACIÓN EN LA NUBE (Firebase compartido con Tienda y Tarjeta)
    Estructura del nodo 'productos' compatible con ambas apps.
    ============================================================ */
-function prodToCloud(p){ return { nombre:p.nombre, precio:+p.precio||0, stock:p.control?(+p.stock||0):999, costo:+p.costo||0, minimo:+p.min||0, categoria:p.cat||'General', puntos:+p.puntos||0, imagen:p.imagen||'', icono:p.icon||'fa-box', visible:p.online!==false, controla_stock:p.control!==false }; }
-function cloudToProd(id,c){ return { id, nombre:c.nombre||id, precio:+c.precio||0, costo:+c.costo||0, stock:+c.stock||0, min:+c.minimo||0, cat:c.categoria||'General', puntos:+c.puntos||0, imagen:c.imagen||'', icon:c.icono||'fa-box', control:c.controla_stock!==false, online:c.visible!==false }; }
+function prodToCloud(p){ return { nombre:p.nombre, precio:+p.precio||0, stock:p.control?(+p.stock||0):999, costo:+p.costo||0, minimo:+p.min||0, categoria:p.cat||'General', puntos:+p.puntos||0, imagen:p.imagen||'', icono:p.icon||'fa-box', visible:p.online!==false, controla_stock:p.control!==false, kyteUrl:p.kyteUrl||'', kyte_url:p.kyteUrl||'' }; }
+function cloudToProd(id,c){ return { id, nombre:c.nombre||id, precio:+c.precio||0, costo:+c.costo||0, stock:+c.stock||0, min:+c.minimo||0, cat:c.categoria||'General', puntos:+c.puntos||0, imagen:c.imagen||'', icon:c.icono||'fa-box', control:c.controla_stock!==false, online:c.visible!==false, kyteUrl:c.kyteUrl||c.kyte_url||'' }; }
 function setSyncMsg(m){ SYNC_MSG=m; const el=document.getElementById('syncStatus'); if(el) el.innerHTML=m; }
 function cloudSetOne(p){ if(p&&window.PGSync&&window.PGSync.ok){ try{ window.PGSync.setOne(p.id,prodToCloud(p)); }catch(e){} } }
 function cloudRemoveOne(id){ if(window.PGSync&&window.PGSync.ok){ try{ window.PGSync.removeOne(id); }catch(e){} } }
@@ -877,6 +904,156 @@ async function resetTodo(){
   CLOUD={ productos:{}, clientes:{}, transacciones:{}, compras:{}, cxc:{} };
   toast('Todo reiniciado. Recargando\u2026');
   setTimeout(()=>{ location.reload(); }, 900);
+}
+
+
+
+/* ============================================================
+   IMPORTAR CATALOGO DESDE ARCHIVO DE KYTE (CSV)
+   El panel es la fuente unica: este importador LEE un archivo
+   exportado de Kyte (guardado como CSV) y actualiza/crea productos.
+   NO modifica Kyte. La publicacion a Tienda y Tarjeta es explicita.
+   ============================================================ */
+let KYTE_IMPORT=[];
+let _kyteHas={};
+function _normKey(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
+function _numKyte(v){ if(v==null) return 0; let s=String(v).replace(/[^0-9,.\-]/g,'').trim(); if(!s) return 0;
+  if(s.indexOf(',')>-1 && s.indexOf('.')>-1){ if(s.lastIndexOf(',')>s.lastIndexOf('.')) s=s.replace(/\./g,'').replace(',','.'); else s=s.replace(/,/g,''); }
+  else if(s.indexOf(',')>-1){ s=s.replace(/\./g,'').replace(',','.'); }
+  const n=parseFloat(s); return isFinite(n)?n:0; }
+function _csvParse(text){
+  text=text.replace(/^\ufeff/,'');
+  const firstLine=(text.split(/\r?\n/)[0]||'');
+  const counts={',':(firstLine.match(/,/g)||[]).length, ';':(firstLine.match(/;/g)||[]).length, '\t':(firstLine.match(/\t/g)||[]).length};
+  let delim=','; if(counts[';']>counts[delim]) delim=';'; if(counts['\t']>counts[delim]) delim='\t';
+  const rows=[]; let row=[], field='', i=0, q=false;
+  while(i<text.length){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else q=false; } else field+=c; }
+    else { if(c==='"') q=true;
+      else if(c===delim){ row.push(field); field=''; }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else if(c==='\r'){ /* ignore */ }
+      else field+=c; }
+    i++; }
+  if(field.length||row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r=>r.length && r.some(x=>String(x).trim()!==''));
+}
+function importarKyte(input){
+  const f=input.files&&input.files[0]; if(!f){ return; }
+  const r=new FileReader();
+  r.onload=e=>{ try{ _kyteProcess(String(e.target.result||'')); }catch(err){ toast('No se pudo leer el archivo'); } input.value=''; };
+  r.onerror=()=>{ toast('No se pudo leer el archivo'); input.value=''; };
+  r.readAsText(f,'utf-8');
+}
+function _kyteProcess(text){
+  const rows=_csvParse(text);
+  if(rows.length<2){ toast('El archivo no tiene filas de productos. Guardelo como CSV desde Kyte/Excel.'); return; }
+  const head=rows[0].map(_normKey);
+  const find=(...alts)=>{ for(const a of alts){ const k=_normKey(a); const idx=head.findIndex(h=>h===k); if(idx>-1) return idx; } for(const a of alts){ const k=_normKey(a); const idx=head.findIndex(h=>h.indexOf(k)>-1); if(idx>-1) return idx; } return -1; };
+  const col={
+    nombre: find('nombre','name','nome','producto','articulo','item','titulo','descripcion'),
+    cat:    find('categoria','category','grupo','familia'),
+    precio: find('precio de venta','precio venta','precio','price','preco','valor','pvp'),
+    costo:  find('costo','coste','cost','custo','precio de costo'),
+    stock:  find('cantidad','stock','existencia','existencias','inventario','quantity','quantidade'),
+    min:    find('minimo','stock minimo','min','minimum'),
+    puntos: find('puntos','points','pontos','fidelidad'),
+    kyte:   find('enlace','url','link','enlace kyte','enlace del producto'),
+    imagen: find('imagen','image','foto','imagem','url imagen','foto url')
+  };
+  if(col.nombre<0){ toast('No se encontro la columna de Nombre en el archivo.'); return; }
+  _kyteHas={ cat:col.cat>-1, precio:col.precio>-1, costo:col.costo>-1, stock:col.stock>-1, min:col.min>-1, puntos:col.puntos>-1, kyte:col.kyte>-1, imagen:col.imagen>-1 };
+  const out=[];
+  for(let i=1;i<rows.length;i++){ const r=rows[i]; const g=idx=>(idx>-1 && idx<r.length)?String(r[idx]).trim():'';
+    const nombre=g(col.nombre); if(!nombre) continue;
+    out.push({ nombre,
+      cat:    g(col.cat)||'General',
+      precio: _numKyte(g(col.precio)),
+      costo:  _numKyte(g(col.costo)),
+      stock:  _numKyte(g(col.stock)),
+      min:    _numKyte(g(col.min)),
+      puntos: _numKyte(g(col.puntos)),
+      kyteUrl:g(col.kyte)||'',
+      imagen: g(col.imagen)||'' });
+  }
+  if(!out.length){ toast('No se encontraron productos validos en el archivo'); return; }
+  KYTE_IMPORT=out;
+  _kytePreview();
+}
+function _nuevoId(){ let max=0; PRODUCTOS.forEach(p=>{ const m=/^P(\d+)/.exec(p.id||''); if(m){ const n=+m[1]; if(n>max) max=n; } }); let id, k=max; do{ k++; id='P'+String(k).padStart(2,'0'); }while(PRODUCTOS.some(p=>p.id===id)); return id; }
+function _kyteApplyFields(t,x,isNew,keepImg){
+  t.nombre=x.nombre;
+  if(_kyteHas.cat||isNew) t.cat=x.cat||t.cat||'General';
+  if(_kyteHas.precio||isNew) t.precio=x.precio||0;
+  if(_kyteHas.costo||isNew) t.costo=x.costo||(isNew?0:t.costo);
+  if(_kyteHas.stock||isNew) t.stock=x.stock||0;
+  if(_kyteHas.min||isNew) t.min=x.min||(isNew?0:t.min);
+  if(_kyteHas.puntos||isNew) t.puntos=x.puntos||(isNew?0:t.puntos);
+  if(_kyteHas.kyte && x.kyteUrl) t.kyteUrl=x.kyteUrl; else if(isNew) t.kyteUrl=x.kyteUrl||'';
+  if(_kyteHas.imagen && x.imagen && !(keepImg&&t.imagen)) t.imagen=x.imagen; else if(isNew && t.imagen==null) t.imagen=x.imagen||'';
+  if(t.icon==null) t.icon='fa-box';
+  if(t.control==null) t.control=true;
+  if(t.online==null) t.online=true;
+  if(t.imagen==null) t.imagen='';
+  if(t.precio==null) t.precio=0; if(t.costo==null) t.costo=0; if(t.stock==null) t.stock=0; if(t.min==null) t.min=0; if(t.puntos==null) t.puntos=0;
+  return t;
+}
+function _kytePreview(){
+  const list=KYTE_IMPORT;
+  const existe=n=>PRODUCTOS.some(p=>_normKey(p.nombre)===_normKey(n));
+  const nuevos=list.filter(x=>!existe(x.nombre)).length;
+  const actualiza=list.length-nuevos;
+  const filas=list.slice(0,80).map(x=>`<tr class="border-b border-gray-100">
+    <td class="py-1 px-2">${esc(x.nombre)}${existe(x.nombre)?' <span class=\"text-[9px] text-pg-gold2\">(actualiza)</span>':' <span class=\"text-[9px] text-pg-green\">(nuevo)</span>'}</td>
+    <td class="py-1 px-2 text-pg-muted">${esc(x.cat)}</td>
+    <td class="py-1 px-2 text-right">${money(x.precio)}</td>
+    <td class="py-1 px-2 text-right">${money(x.costo)}</td>
+    <td class="py-1 px-2 text-right">${x.stock}</td></tr>`).join('');
+  openModal(`<div class="p-5">
+    <div class="flex items-center justify-between mb-3"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-file-import mr-1"></i> Importar desde archivo de Kyte</h3><button onclick="closeModal()" class="text-pg-muted hover:text-pg-ink"><i class="fa-solid fa-xmark"></i></button></div>
+    <p class="text-xs text-pg-muted mb-3">Se detectaron <b class="text-pg-ink">${list.length}</b> productos: <b class="text-pg-green">${nuevos} nuevos</b> y <b class="text-pg-gold2">${actualiza} para actualizar</b> (se emparejan por nombre). El panel es la fuente unica; esto NO modifica Kyte.</p>
+    <div class="max-h-64 overflow-auto border border-gray-100 rounded-lg mb-3">
+      <table class="w-full text-[12px]"><thead class="bg-pg-cream sticky top-0"><tr><th class="py-1 px-2 text-left">Producto</th><th class="py-1 px-2 text-left">Categoria</th><th class="py-1 px-2 text-right">Precio</th><th class="py-1 px-2 text-right">Costo</th><th class="py-1 px-2 text-right">Stock</th></tr></thead><tbody>${filas}</tbody></table>
+      ${list.length>80?`<p class="text-[10px] text-pg-muted text-center py-1">... y ${list.length-80} mas</p>`:''}
+    </div>
+    <label class="flex items-center gap-2 text-xs font-semibold mb-2"><input id="kImgSkip" type="checkbox" checked> No sobrescribir la imagen de productos que ya tienen una</label>
+    <label class="flex items-center gap-2 text-xs font-semibold mb-4"><input id="kPub" type="checkbox"> Publicar a Tienda y Tarjeta al terminar</label>
+    <div class="grid grid-cols-2 gap-2">
+      <button onclick="_kyteAplicar('merge')" class="py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-code-merge mr-1"></i> Combinar (actualizar y anadir)</button>
+      <button onclick="_kyteAplicar('replace')" class="py-2.5 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold"><i class="fa-solid fa-rotate mr-1"></i> Reemplazar todo el catalogo</button>
+    </div>
+    <p class="text-[10px] text-pg-muted mt-2">“Reemplazar todo” elimina del panel los productos que no esten en el archivo. “Combinar” conserva los demas.</p>
+  </div>`);
+}
+function _kyteAplicar(modo){
+  if(!KYTE_IMPORT.length){ closeModal(); return; }
+  const keepImg=(document.getElementById('kImgSkip')||{}).checked!==false;
+  const pub=!!(document.getElementById('kPub')||{}).checked;
+  const list=KYTE_IMPORT.slice();
+  let nuevos=0, act=0;
+  if(modo==='replace'){
+    if(!confirm('Esto reemplazara TODO el catalogo del panel con los '+list.length+' productos del archivo. Los que no esten en el archivo se eliminaran del panel. ¿Continuar?')) return;
+    const prev=PRODUCTOS.slice(); PRODUCTOS=[]; let seq=0;
+    list.forEach(x=>{ const old=prev.find(p=>_normKey(p.nombre)===_normKey(x.nombre));
+      const base=old?Object.assign({},old):{};
+      if(old) act++; else nuevos++;
+      if(!base.id){ seq++; base.id='P'+String(seq).padStart(2,'0'); }
+      _kyteApplyFields(base,x,!old,keepImg);
+      PRODUCTOS.push(base);
+    });
+    const seen={}; PRODUCTOS.forEach(p=>{ if(seen[p.id]){ p.id=_nuevoId(); } seen[p.id]=1; });
+  } else {
+    list.forEach(x=>{ const old=PRODUCTOS.find(p=>_normKey(p.nombre)===_normKey(x.nombre));
+      if(old){ _kyteApplyFields(old,x,false,keepImg); act++; }
+      else { const np={id:_nuevoId()}; _kyteApplyFields(np,x,true,keepImg); PRODUCTOS.push(np); nuevos++; }
+    });
+  }
+  closeModal();
+  KYTE_IMPORT=[];
+  toast('Importados '+list.length+' productos ('+nuevos+' nuevos, '+act+' actualizados)');
+  refrescar();
+  if(pub){ syncPush(); }
+  else { setSyncMsg('<span class="text-pg-gold2"><i class="fa-solid fa-circle-info"></i> Importado en el panel. Pulse “Publicar a Tienda y Tarjeta” para enviarlo.</span>'); }
 }
 
 
@@ -1003,6 +1180,7 @@ function startCloudLive(){
   window.PGSync.watchNode('cuentas_por_cobrar', d=>{ mergeCloudCxc(d); refrescar(); });
   window.PGSync.watchNode('pedidos_estado', d=>{ d=d||{}; Object.keys(d).forEach(r=>{ const st=d[r]&&d[r].estado; if(st==='Cancelado'&&!CANCELADOS[r]) CANCELADOS[r]={recibo:r,fecha:''}; }); saveCancelados(); rebuildCloudRecibos(); refrescar(); });
   window.PGSync.watchNode('anuncios', d=>{ if(d&&typeof d==='object'){ ANUNCIOS=d; saveAnuncios(); if(VISTA==='anuncios'&&RENDER.anuncios) RENDER.anuncios(); } });
+  window.PGSync.watchNode('config/empresa', d=>{ mergeCloudEmpresa(d); });
   if(typeof setSyncMsg==='function') setSyncMsg('<span class="text-pg-green"><i class="fa-solid fa-satellite-dish"></i> Sincronizaci\u00f3n en vivo activa</span>');
 }
 (function waitCloud(){ let n=0; (function t(){ if(window.PGSync&&window.PGSync.ok&&window.PGSync.watchNode){ startCloudLive(); } else if(n++<25){ setTimeout(t,300); } })(); })();
@@ -1092,7 +1270,7 @@ RENDER.clientes = function(){
       <td class="px-3 py-2 text-center">${c.compras}</td>
       <td class="px-3 py-2 text-center font-semibold text-pg-green">${c.puntos} pts</td>
       <td class="px-3 py-2 text-right ${c.saldo>0?'text-red-600 font-semibold':'text-pg-muted'}">${money(c.saldo)}</td>
-      <td class="px-3 py-2 text-center whitespace-nowrap"><a href="https://wa.me/505${EMPRESA.whatsapp}" target="_blank" rel="noopener" class="text-[11px] px-2 py-1 rounded-md bg-green-600 text-white hover:bg-green-700"><i class="fa-brands fa-whatsapp"></i></a> <button onclick="canjearPuntos('${c.id}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2"><i class="fa-solid fa-gift"></i> Canjear</button></td>
+      <td class="px-3 py-2 text-center whitespace-nowrap"><a href="https://wa.me/505${EMPRESA.whatsapp}" target="_blank" rel="noopener" class="text-[11px] px-2 py-1 rounded-md bg-green-600 text-white hover:bg-green-700"><i class="fa-brands fa-whatsapp"></i></a> <button onclick="historialCliente('${c.id}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-green text-white hover:bg-pg-green2"><i class="fa-solid fa-clock-rotate-left"></i> Historial</button> <button onclick="canjearPuntos('${c.id}')" class="text-[11px] px-2 py-1 rounded-md bg-pg-gold text-white hover:bg-pg-gold2"><i class="fa-solid fa-gift"></i> Canjear</button></td>
     </tr>`).join('');
   document.getElementById('view-clientes').innerHTML=`
   <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
@@ -1104,6 +1282,16 @@ RENDER.clientes = function(){
   <div class="flex flex-wrap justify-end gap-2 mb-3"><button onclick="abrirResumenClientes()" class="py-2 px-4 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-file-invoice mr-1"></i> Resumen de clientes por período</button><button onclick="nuevoCliente()" class="py-2 px-4 rounded-lg bg-pg-gold hover:bg-pg-gold2 text-white text-sm font-semibold"><i class="fa-solid fa-user-plus mr-1"></i> Nuevo cliente</button></div>
   <div class="bg-white rounded-2xl shadow-soft"><div class="px-5 py-4 border-b border-gray-100"><h3 class="font-bold text-pg-green"><i class="fa-solid fa-users text-pg-gold mr-2"></i>Clientes y Tarjeta de Fidelidad</h3></div>
     <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-pg-cream text-pg-muted text-[11px] uppercase"><tr><th class="px-3 py-2 text-left">Cliente</th><th class="px-3 py-2 text-left">Teléfono</th><th class="px-3 py-2 text-left">Tarjeta</th><th class="px-3 py-2 text-center">Compras</th><th class="px-3 py-2 text-center">Puntos</th><th class="px-3 py-2 text-right">Saldo</th><th class="px-3 py-2 text-center">Acciones</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </div>
+  <div class="bg-white rounded-2xl shadow-soft mt-5">
+    <div class="px-5 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+      <h3 class="font-bold text-pg-green"><i class="fa-solid fa-clock-rotate-left text-pg-gold mr-2"></i>Historial de Clientes</h3>
+      <div class="flex flex-wrap items-center gap-2">
+        <select id="histCliSel" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-pg-gold">${CLIENTES.map(c=>`<option value="${c.id}">${esc(c.nombre)}${c.tel?' · '+esc(c.tel):''}</option>`).join('')}</select>
+        <button onclick="historialCliente(document.getElementById('histCliSel').value)" class="py-2 px-4 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-file-invoice-dollar mr-1"></i> Ver / Imprimir historial</button>
+      </div>
+    </div>
+    <div class="px-5 py-4 text-[12px] text-pg-muted leading-relaxed">Consulta todas las compras de cada cliente —facturas al contado y al crédito, ventas de punto de venta y abonos— junto con el saldo pendiente. Puedes filtrar por período e imprimir o guardar en PDF el estado de cuenta completo. También está disponible el botón <b class="text-pg-green">Historial</b> en cada fila de la tabla de clientes.</div>
   </div>`;
 };
 function nuevoCliente(){
@@ -1667,6 +1855,57 @@ function estadoCuentaGen(id){ const c=CLIENTES.find(x=>x.id===id); if(!c)return;
 }
 
 
+/* ============================================================
+   HISTORIAL COMPLETO DEL CLIENTE (facturas, ventas, abonos)
+   Refleja todas las compras y pagos del cliente y permite
+   imprimir / guardar en PDF su estado de cuenta.
+   ============================================================ */
+function historialCliente(id){ const c=CLIENTES.find(x=>x.id===id); if(!c){ toast('Seleccione un cliente'); return; }
+  openModal(`<h3 class="font-bold text-pg-green mb-1"><i class="fa-solid fa-clock-rotate-left text-pg-gold mr-2"></i>Historial del cliente</h3>
+    <p class="text-sm text-pg-muted mb-3">${esc(c.nombre)}${c.tel?' · '+esc(c.tel):''}</p>
+    <p class="text-[11px] text-pg-muted mb-3">Deja las fechas en blanco para ver <b>todo el historial</b>, o define un período.</p>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <label class="text-xs text-pg-muted">Desde<input id="hcDesde" type="date" class="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"></label>
+      <label class="text-xs text-pg-muted">Hasta<input id="hcHasta" type="date" class="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"></label>
+    </div>
+    <div class="flex gap-2"><button onclick="closeModal()" class="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold">Cancelar</button><button onclick="historialClienteGen('${c.id}')" class="flex-1 py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-print mr-1"></i> Generar e imprimir</button></div>`);
+}
+function historialClienteGen(id){ const c=CLIENTES.find(x=>x.id===id); if(!c)return;
+  const desde=(document.getElementById('hcDesde')||{}).value||'';
+  const hasta=(document.getElementById('hcHasta')||{}).value||'';
+  const inRange=iso=>{ const d=String(iso||'').slice(0,10); if(desde&&(!d||d<desde))return false; if(hasta&&(!d||d>hasta))return false; return true; };
+  const esAbono=v=>/abono/i.test((v.metodo||'')+' '+(v.origen||''));
+  const movs=[];
+  VENTAS.forEach(v=>{ if(!v||v.cliente!==c.nombre) return; const iso=v.fechaISO?String(v.fechaISO).slice(0,10):''; if(!inRange(iso)) return;
+    if(esAbono(v)){ movs.push({iso,doc:v.recibo||'',detalle:'Abono'+(/crédito/i.test(v.origen||'')?' a crédito':''),cargo:0,abono:+v.total||0,metodo:v.metodo||''}); }
+    else { movs.push({iso,doc:v.recibo||'',detalle:(v.origen||'Venta')+(v.metodo?' · '+v.metodo:''),cargo:+v.total||0,abono:0,metodo:v.metodo||''}); }
+  });
+  movs.sort((x,y)=>{ if(!x.iso&&!y.iso)return 0; if(!x.iso)return 1; if(!y.iso)return -1; return x.iso<y.iso?-1:(x.iso>y.iso?1:0); });
+  const totCargo=movs.reduce((s,x)=>s+x.cargo,0), totAbono=movs.reduce((s,x)=>s+x.abono,0);
+  const nFac=movs.filter(x=>x.cargo>0).length, nAbo=movs.filter(x=>x.abono>0).length;
+  const filas=movs.map(x=>`<tr><td style="padding:6px 4px">${_fmtF(x.iso)}<\/td><td style="padding:6px 4px">${esc(x.doc)}<\/td><td style="padding:6px 4px">${esc(x.detalle)}<\/td><td style="padding:6px 4px;text-align:right">${x.cargo?money(x.cargo):''}<\/td><td style="padding:6px 4px;text-align:right;color:#1b382b">${x.abono?money(x.abono):''}<\/td><\/tr>`).join('')||'<tr><td colspan=5 style="text-align:center;padding:16px;color:#6b7c68">Sin movimientos en el período<\/td><\/tr>';
+  const periodoTxt=(desde||hasta)?(_fmtF(desde)+' — '+_fmtF(hasta)):'Historial completo';
+  const html=`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Historial — ${esc(c.nombre)}<\/title>
+  <style>*{box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}body{margin:0;background:#f4f4f0;color:#2c2c2c}
+  .r{max-width:680px;margin:20px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 22px rgba(27,56,43,.15)}
+  .hd{background:#1b382b;color:#fff;padding:18px 24px}.hd h1{margin:0;font-size:18px}.hd p{margin:2px 0 0;font-size:11px;opacity:.85}
+  .bd{padding:18px 24px;font-size:13px}.cli{background:#f4f4f0;border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.6}
+  .kpis{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.kpi{flex:1;min-width:120px;background:#f4f4f0;border-radius:8px;padding:8px 10px;font-size:11px}.kpi b{display:block;font-size:15px;color:#1b382b;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:12px}thead td{border-bottom:2px solid #e2e8e0;font-weight:700;color:#1b382b;padding:6px 4px}tfoot td{border-top:2px dashed #e2e8e0;padding-top:8px;font-weight:800;color:#1b382b}
+  .saldo{background:#c8963e;color:#fff;border-radius:10px;padding:10px 14px;margin-top:12px;text-align:right;font-size:15px;font-weight:800}
+  .ft{text-align:center;font-size:10px;color:#6b7c68;padding:0 24px 18px}.noprint{text-align:center;margin:14px}.btn{background:#c8963e;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px}
+  @media print{.noprint{display:none}body{background:#fff}.r{box-shadow:none;margin:0}}<\/style><\/head><body>
+  <div class="r"><div class="hd"><h1>${EMPRESA.nombre}<\/h1><p>${EMPRESA.lema} · RUC ${EMPRESA.ruc}<\/p><p style="margin-top:8px;font-size:14px;font-weight:700">Historial del cliente — Estado de cuenta<\/p><\/div>
+  <div class="bd"><div class="cli"><b>Cliente:<\/b> ${esc(c.nombre)}${c.tel?'<br><b>Tel:<\/b> '+esc(c.tel):''}${c.tarjeta?'<br><b>Tarjeta:<\/b> '+esc(c.tarjeta):''}<br><b>Período:<\/b> ${periodoTxt}<\/div>
+    <div class="kpis"><div class="kpi">Facturas / ventas<b>${nFac}<\/b><\/div><div class="kpi">Abonos<b>${nAbo}<\/b><\/div><div class="kpi">Puntos fidelidad<b>${c.puntos||0}<\/b><\/div><\/div>
+    <table><thead><tr><td>Fecha<\/td><td>Documento<\/td><td>Detalle<\/td><td style="text-align:right">Cargo<\/td><td style="text-align:right">Abono<\/td><\/tr><\/thead><tbody>${filas}<\/tbody><tfoot><tr><td colspan=3>Totales del período<\/td><td style="text-align:right">${money(totCargo)}<\/td><td style="text-align:right">${money(totAbono)}<\/td><\/tr><\/tfoot><\/table>
+    <div class="saldo">Saldo pendiente actual: ${money(c.saldo)}<\/div>
+    <div class="pay" style="background:#f4f4f0;border-radius:10px;padding:10px 14px;margin-top:12px;font-size:11px;line-height:1.6"><b>Pago vía ${EMPRESA.banco}<\/b><br>Cuenta N° <b>${EMPRESA.cuenta}<\/b> · ACH alias <b>${EMPRESA.ach}<\/b> · WhatsApp <b>+505 ${EMPRESA.whatsapp}<\/b><\/div><\/div>
+  <div class="ft">Documento informativo generado por PG del Campo — Panel<\/div><\/div>
+  <div class="noprint"><button class="btn" onclick="window.print()">&#128424; Imprimir / Guardar PDF<\/button><\/div><\/body><\/html>`;
+  const w=window.open('','_blank','width=740,height=860'); if(!w){toast('Habilite las ventanas emergentes');return;} w.document.write(html); w.document.close(); closeModal();
+}
+
 /* === app2_8.js === */
 
 /* ============================================================
@@ -1932,6 +2171,7 @@ function guardarUsuario(i){
    CONFIGURACIONES (empresa + pasarela QR LaFise)
    ============================================================ */
 RENDER.config = function(){
+  const hRows=(EMPRESA.horarios||[]).map(h=>`<tr><td><input class="h-dia w-full px-2 py-1 border border-gray-200 rounded text-sm" value="${esc(h.dia)}"></td><td><input class="h-horario w-full px-2 py-1 border border-gray-200 rounded text-sm" value="${esc(h.horario)}"></td><td><button onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class='fa-solid fa-trash'></i></button></td></tr>`).join('');
   document.getElementById('view-config').innerHTML=`
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
     <div class="bg-white rounded-2xl shadow-soft p-5">
@@ -1940,6 +2180,11 @@ RENDER.config = function(){
         <div><label class="text-xs font-semibold">Nombre comercial</label><input id="eNom" value="${esc(EMPRESA.nombre)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
         <div class="grid grid-cols-2 gap-3"><div><label class="text-xs font-semibold">RUC</label><input id="eRuc" value="${esc(EMPRESA.ruc)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div><div><label class="text-xs font-semibold">Régimen</label><input id="eReg" value="${esc(EMPRESA.regimen)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div></div>
         <div><label class="text-xs font-semibold">Ubicación</label><input id="eLug" value="${esc(EMPRESA.lugar)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div class="grid grid-cols-2 gap-3"><div><label class="text-xs font-semibold">Teléfono</label><input id="eTel" value="${esc(EMPRESA.tel)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div><div><label class="text-xs font-semibold">Titular</label><input id="eTitular" value="${esc(EMPRESA.titular)}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div></div>
+        <div><label class="text-xs font-semibold">Email</label><input id="eEmail" value="${esc(EMPRESA.email||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div><label class="text-xs font-semibold">Dirección</label><input id="eDir" value="${esc(EMPRESA.direccion||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div><label class="text-xs font-semibold">Misión</label><textarea id="eMision" rows="3" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold text-sm">${esc(EMPRESA.mision||'')}</textarea></div>
+        <div><label class="text-xs font-semibold">Visión</label><textarea id="eVision" rows="3" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold text-sm">${esc(EMPRESA.vision||'')}</textarea></div>
         <button onclick="guardarEmpresa()" class="w-full py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold">Guardar datos</button>
       </div>
     </div>
@@ -1953,11 +2198,34 @@ RENDER.config = function(){
         <p class="text-[11px] text-pg-muted p-3 rounded-xl bg-pg-cream leading-relaxed"><b class="text-pg-green">Nota técnica:</b> el QR codifica los datos de tu cuenta. Un QR “escanear y pagar” nativo requiere la cadena EMVCo oficial de Banco LaFise; al obtenerla, reemplázala en <span class="font-mono">payString()</span> y será escaneable desde la app del banco. No se almacenan datos bancarios sensibles.</p>
       </div>
     </div>
+    <div class="bg-white rounded-2xl shadow-soft p-5">
+      <h3 class="font-bold text-pg-green mb-4"><i class="fa-solid fa-clock text-pg-gold mr-2"></i>Horarios de Atención</h3>
+      <p class="text-[11px] text-pg-muted mb-3">Edita los horarios que se muestran en la web pública. Agrega o elimina filas según necesites.</p>
+      <table id="horariosTable" class="w-full text-sm"><thead><tr class="border-b border-gray-100"><th class="text-left text-[11px] text-pg-muted pb-2">Día</th><th class="text-left text-[11px] text-pg-muted pb-2">Horario</th><th class="w-10"></th></tr></thead><tbody>${hRows}</tbody></table>
+      <button onclick="addHorarioRow()" class="mt-3 text-[12px] px-3 py-1.5 rounded-lg bg-pg-cream text-pg-green font-semibold"><i class="fa-solid fa-plus mr-1"></i>Agregar día</button>
+      <button onclick="guardarHorarios()" class="mt-3 ml-2 text-[12px] px-3 py-1.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white font-semibold"><i class="fa-solid fa-floppy-disk mr-1"></i>Guardar horarios</button>
+    </div>
+    <div class="bg-white rounded-2xl shadow-soft p-5">
+      <h3 class="font-bold text-pg-green mb-4"><i class="fa-solid fa-link text-pg-gold mr-2"></i>Enlaces Externos</h3>
+      <p class="text-[11px] text-pg-muted mb-3">URLs que se publican en el sitio web. Estos enlaces se sincronizan con el config.js de la web.</p>
+      <div class="space-y-3 text-sm">
+        <div><label class="text-xs font-semibold">Tienda Kyte</label><input id="eKyte" value="${esc(EMPRESA.enlaceKyte||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div><label class="text-xs font-semibold">Tarjeta de Agente</label><input id="eAgente" value="${esc(EMPRESA.enlaceAgente||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div><label class="text-xs font-semibold">Tarjeta de Fidelidad</label><input id="eTarjeta" value="${esc(EMPRESA.enlaceTarjetaFidelidad||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div><label class="text-xs font-semibold">Pago QR LaFise</label><input id="ePagoQR" value="${esc(EMPRESA.enlacePagoQR||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <button onclick="guardarEnlaces()" class="w-full py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-floppy-disk mr-1"></i>Guardar enlaces</button>
+      </div>
+    </div>
   </div>`;
   setTimeout(()=>makeQR(document.getElementById('qrCfg'),payString('',''),150),60);
 };
 function qrConfig(){ EMPRESA.banco=document.getElementById('pBanco').value; EMPRESA.cuenta=document.getElementById('pCta').value; EMPRESA.ach=document.getElementById('pAch').value; EMPRESA.whatsapp=document.getElementById('pWa').value; makeQR(document.getElementById('qrCfg'),payString('',''),150); }
-function guardarEmpresa(){ EMPRESA.nombre=document.getElementById('eNom').value; EMPRESA.ruc=document.getElementById('eRuc').value; EMPRESA.regimen=document.getElementById('eReg').value; EMPRESA.lugar=document.getElementById('eLug').value; toast('Datos de empresa guardados'); }
+function guardarEmpresa(){ EMPRESA.nombre=document.getElementById('eNom').value; EMPRESA.ruc=document.getElementById('eRuc').value; EMPRESA.regimen=document.getElementById('eReg').value; EMPRESA.lugar=document.getElementById('eLug').value; EMPRESA.mision=document.getElementById('eMision').value; EMPRESA.vision=document.getElementById('eVision').value; EMPRESA.email=document.getElementById('eEmail').value; EMPRESA.direccion=document.getElementById('eDir').value; EMPRESA.tel=document.getElementById('eTel').value; EMPRESA.titular=document.getElementById('eTitular').value; guardarHorariosPanel(); guardarEnlacesPanel(); saveEmpresa(); toast('Datos de empresa guardados'); }
+function guardarHorariosPanel(){ var rows=document.querySelectorAll('#horariosTable tbody tr'); EMPRESA.horarios=[]; rows.forEach(function(r){ var d=r.querySelector('.h-dia').value, h=r.querySelector('.h-horario').value; EMPRESA.horarios.push({dia:d,horario:h}); }); }
+function addHorarioRow(){ var tb=document.querySelector('#horariosTable tbody'); if(!tb)return; tb.insertAdjacentHTML('beforeend','<tr><td><input class="h-dia w-full px-2 py-1 border border-gray-200 rounded text-sm" placeholder="Día"></td><td><input class="h-horario w-full px-2 py-1 border border-gray-200 rounded text-sm" placeholder="Horario"></td><td><button onclick="this.closest(\'tr\').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class=\'fa-solid fa-trash\'></i></button></td></tr>'); }
+function guardarEnlacesPanel(){ var e=document.getElementById; EMPRESA.enlaceKyte=e('eKyte')?e('eKyte').value:EMPRESA.enlaceKyte; EMPRESA.enlaceAgente=e('eAgente')?e('eAgente').value:EMPRESA.enlaceAgente; EMPRESA.enlaceTarjetaFidelidad=e('eTarjeta')?e('eTarjeta').value:EMPRESA.enlaceTarjetaFidelidad; EMPRESA.enlacePagoQR=e('ePagoQR')?e('ePagoQR').value:EMPRESA.enlacePagoQR; }
+function guardarHorarios(){ guardarHorariosPanel(); saveEmpresa(); toast('Horarios guardados'); }
+function guardarEnlaces(){ guardarEnlacesPanel(); saveEmpresa(); toast('Enlaces guardados'); }
 
 /* ============================================================
    INIT
