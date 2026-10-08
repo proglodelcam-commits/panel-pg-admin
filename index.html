@@ -8,6 +8,7 @@
 
 <link href="vendor/fonts/fonts.css" rel="stylesheet">
 <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 <script src="vendor/tailwind.js"></script>
 <script src="vendor/chart.umd.min.js"></script>
 <script src="vendor/qrcode.min.js"></script>
@@ -153,10 +154,16 @@ const EMPRESA = {
   vision:'Ser la marca referente en productos naturales del campo nicaragüense, reconocida por calidad, tradición y servicio al cliente.',
   email:'proglodelcam@gmail.com',
   direccion:'Km 38 Carretera Jinotepe a San Marcos',
+  heroSlogan:'Del Campo a su Mesa',
+  heroLema:'Todo lo bueno viene de Dios, con su ayuda todo es posible',
+  unico:'', envio:'',
+  clubDescripcion:'', clubEslogan:'', clubCierre:'',
+  pagoEntrega:'', pagoCheque:'',
+  footerCopy:'', footerRuc:'',
   horarios:[
-    {dia:'Lunes',horario:'Cerrado'},{dia:'Martes',horario:'5:30 p.m. – 11:00 p.m.'},
-    {dia:'Miércoles',horario:'5:30 p.m. – 1:00 a.m.'},{dia:'Jueves',horario:'5:30 p.m. – 11:00 p.m.'},
-    {dia:'Viernes',horario:'6:00 p.m. – 2:00 a.m.'},{dia:'Sábado',horario:'6:00 p.m. – 4:00 a.m.'},
+    {dia:'Lunes',horario:'8:30 a.m. – 4:30 p.m.'},{dia:'Martes',horario:'8:30 a.m. – 4:30 p.m.'},
+    {dia:'Miércoles',horario:'8:30 a.m. – 4:30 p.m.'},{dia:'Jueves',horario:'8:30 a.m. – 4:30 p.m.'},
+    {dia:'Viernes',horario:'8:30 a.m. – 4:30 p.m.'},{dia:'Sábado',horario:'8:30 a.m. – 12:00 m.'},
     {dia:'Domingos',horario:'Cerrado'}
   ],
   enlaceKyte:'https://proglodelcampo.catalog.kyte.site/',
@@ -2216,16 +2223,36 @@ RENDER.config = function(){
         <button onclick="guardarEnlaces()" class="w-full py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-floppy-disk mr-1"></i>Guardar enlaces</button>
       </div>
     </div>
+    <div class="bg-white rounded-2xl shadow-soft p-5 lg:col-span-2">
+      <h3 class="font-bold text-pg-green mb-4"><i class="fa-solid fa-globe text-pg-gold mr-2"></i>Contenido del Sitio Web (web pública)</h3>
+      <p class="text-[11px] text-pg-muted mb-3">Edita los textos que muestra la página pública. Al guardar se sincronizan con la web automáticamente. Si dejas un campo vacío, la web conserva su texto por defecto.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div><label class="text-xs font-semibold">Eslogan principal (hero)</label><input id="wSlogan" value="${esc(EMPRESA.heroSlogan||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div><label class="text-xs font-semibold">Frase de fe (hero)</label><input id="wLema" value="${esc(EMPRESA.heroLema||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div class="md:col-span-2"><label class="text-xs font-semibold">Lo que nos hace únicos</label><textarea id="wUnico" rows="2" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold text-sm">${esc(EMPRESA.unico||'')}</textarea></div>
+        <div class="md:col-span-2"><label class="text-xs font-semibold">Texto de envíos</label><textarea id="wEnvio" rows="2" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold text-sm">${esc(EMPRESA.envio||'')}</textarea></div>
+        <div class="md:col-span-2"><label class="text-xs font-semibold">Club de Fidelidad · Descripción</label><textarea id="wClubDesc" rows="2" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold text-sm">${esc(EMPRESA.clubDescripcion||'')}</textarea></div>
+        <div><label class="text-xs font-semibold">Club · Eslogan</label><input id="wClubEslogan" value="${esc(EMPRESA.clubEslogan||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div><label class="text-xs font-semibold">Club · Mensaje de cierre</label><input id="wClubCierre" value="${esc(EMPRESA.clubCierre||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div class="md:col-span-2"><label class="text-xs font-semibold">Pago contra entrega (texto)</label><textarea id="wPagoEntrega" rows="2" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold text-sm">${esc(EMPRESA.pagoEntrega||'')}</textarea></div>
+        <div class="md:col-span-2"><label class="text-xs font-semibold">Pago con cheque (texto)</label><textarea id="wPagoCheque" rows="2" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold text-sm">${esc(EMPRESA.pagoCheque||'')}</textarea></div>
+        <div><label class="text-xs font-semibold">Pie de página · Copyright</label><input id="wFooterCopy" value="${esc(EMPRESA.footerCopy||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+        <div><label class="text-xs font-semibold">Pie de página · RUC (texto)</label><input id="wFooterRuc" value="${esc(EMPRESA.footerRuc||'')}" class="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-pg-gold"></div>
+      </div>
+      <button onclick="guardarWeb()" class="w-full mt-4 py-2.5 rounded-lg bg-pg-green hover:bg-pg-green2 text-white text-sm font-semibold"><i class="fa-solid fa-floppy-disk mr-1"></i>Guardar contenido web</button>
+    </div>
   </div>`;
   setTimeout(()=>makeQR(document.getElementById('qrCfg'),payString('',''),150),60);
 };
 function qrConfig(){ EMPRESA.banco=document.getElementById('pBanco').value; EMPRESA.cuenta=document.getElementById('pCta').value; EMPRESA.ach=document.getElementById('pAch').value; EMPRESA.whatsapp=document.getElementById('pWa').value; makeQR(document.getElementById('qrCfg'),payString('',''),150); }
-function guardarEmpresa(){ EMPRESA.nombre=document.getElementById('eNom').value; EMPRESA.ruc=document.getElementById('eRuc').value; EMPRESA.regimen=document.getElementById('eReg').value; EMPRESA.lugar=document.getElementById('eLug').value; EMPRESA.mision=document.getElementById('eMision').value; EMPRESA.vision=document.getElementById('eVision').value; EMPRESA.email=document.getElementById('eEmail').value; EMPRESA.direccion=document.getElementById('eDir').value; EMPRESA.tel=document.getElementById('eTel').value; EMPRESA.titular=document.getElementById('eTitular').value; guardarHorariosPanel(); guardarEnlacesPanel(); saveEmpresa(); toast('Datos de empresa guardados'); }
+function guardarEmpresa(){ EMPRESA.nombre=document.getElementById('eNom').value; EMPRESA.ruc=document.getElementById('eRuc').value; EMPRESA.regimen=document.getElementById('eReg').value; EMPRESA.lugar=document.getElementById('eLug').value; EMPRESA.mision=document.getElementById('eMision').value; EMPRESA.vision=document.getElementById('eVision').value; EMPRESA.email=document.getElementById('eEmail').value; EMPRESA.direccion=document.getElementById('eDir').value; EMPRESA.tel=document.getElementById('eTel').value; EMPRESA.titular=document.getElementById('eTitular').value; guardarHorariosPanel(); guardarEnlacesPanel(); guardarWebPanel(); saveEmpresa(); toast('Datos de empresa guardados'); }
 function guardarHorariosPanel(){ var rows=document.querySelectorAll('#horariosTable tbody tr'); EMPRESA.horarios=[]; rows.forEach(function(r){ var d=r.querySelector('.h-dia').value, h=r.querySelector('.h-horario').value; EMPRESA.horarios.push({dia:d,horario:h}); }); }
 function addHorarioRow(){ var tb=document.querySelector('#horariosTable tbody'); if(!tb)return; tb.insertAdjacentHTML('beforeend','<tr><td><input class="h-dia w-full px-2 py-1 border border-gray-200 rounded text-sm" placeholder="Día"></td><td><input class="h-horario w-full px-2 py-1 border border-gray-200 rounded text-sm" placeholder="Horario"></td><td><button onclick="this.closest(\'tr\').remove()" class="text-red-400 hover:text-red-600 text-sm"><i class=\'fa-solid fa-trash\'></i></button></td></tr>'); }
 function guardarEnlacesPanel(){ var e=document.getElementById; EMPRESA.enlaceKyte=e('eKyte')?e('eKyte').value:EMPRESA.enlaceKyte; EMPRESA.enlaceAgente=e('eAgente')?e('eAgente').value:EMPRESA.enlaceAgente; EMPRESA.enlaceTarjetaFidelidad=e('eTarjeta')?e('eTarjeta').value:EMPRESA.enlaceTarjetaFidelidad; EMPRESA.enlacePagoQR=e('ePagoQR')?e('ePagoQR').value:EMPRESA.enlacePagoQR; }
 function guardarHorarios(){ guardarHorariosPanel(); saveEmpresa(); toast('Horarios guardados'); }
 function guardarEnlaces(){ guardarEnlacesPanel(); saveEmpresa(); toast('Enlaces guardados'); }
+function guardarWebPanel(){ var g=function(id){ var e=document.getElementById(id); return e?e.value:undefined; }; var map={heroSlogan:'wSlogan',heroLema:'wLema',unico:'wUnico',envio:'wEnvio',clubDescripcion:'wClubDesc',clubEslogan:'wClubEslogan',clubCierre:'wClubCierre',pagoEntrega:'wPagoEntrega',pagoCheque:'wPagoCheque',footerCopy:'wFooterCopy',footerRuc:'wFooterRuc'}; Object.keys(map).forEach(function(k){ var v=g(map[k]); if(v!==undefined) EMPRESA[k]=v; }); }
+function guardarWeb(){ guardarWebPanel(); saveEmpresa(); toast('Contenido del sitio web guardado'); }
 
 /* ============================================================
    INIT
