@@ -1162,8 +1162,8 @@ function resolveItems(itemsRaw){
 function rebuildCloudRecibos(){
   const tx=CLOUD.transacciones||{}, cr=CLOUD.compras||{};
   const map={};
-  Object.values(tx).forEach(t=>{ if(!t)return; const nr=t.numero_recibo||t.id; if(!nr)return; const m=(map[nr]=map[nr]||{recibo:nr}); m.cliente=t.cliente||m.cliente; m.tel=t.whatsapp||m.tel; m.total=(+t.monto|| m.total||0); m.metodo=(t.metodo_pago&&t.metodo_pago!=='N/A')?t.metodo_pago:(m.metodo||'Transferencia'); m.estado_pago=t.estado; m.credito=/cr\u00e9dito|credito/i.test(t.tipo||'')||t.estado==='pendiente'; m.fecha=t.fecha||m.fecha; m.ship=(m.ship!=null?m.ship:(+t.costo_envio||+t.envio||0)); m.origen='Tienda en Linea'; });
-  Object.keys(cr).forEach(k=>{ const c=cr[k]; if(!c)return; const nr=c.numero_recibo||c.id||String(k).replace(/^recibo_/,''); const m=(map[nr]=map[nr]||{recibo:nr}); m.cliente=c.nombre_cliente||c.cliente_nombre||m.cliente||'Cliente en linea'; m.tel=c.whatsapp_cliente||m.tel; if(c.total!=null)m.total=+c.total; else if(m.total==null)m.total=+c.monto_revertir||0; m.items=resolveItems(c.items); m.fecha=c.fecha||m.fecha; const sh=+c.costo_envio||+c.envio||(c.envio&&+c.envio.costo)||0; if(sh) m.ship=sh; if(c.tipo_descuento) m.descTipo=c.tipo_descuento; if(c.monto_descuento!=null||c.descuento!=null) m.descMonto=+c.monto_descuento||+c.descuento||0; if(!m.origen) m.origen='Tarjeta Fidelidad'; });
+  Object.values(tx).forEach(t=>{ if(!t)return; const nr=t.numero_recibo||t.id; if(!nr)return; const m=(map[nr]=map[nr]||{recibo:nr}); m.cliente=t.cliente||m.cliente; m.tel=t.whatsapp||m.tel; m.total=(+t.monto|| m.total||0); m.metodo=(t.metodo_pago&&t.metodo_pago!=='N/A')?t.metodo_pago:(m.metodo||'Transferencia'); m.estado_pago=t.estado; m.credito=/cr\u00e9dito|credito/i.test(t.tipo||'')||t.estado==='pendiente'; m.fecha=t.fecha||m.fecha; m.ship=(m.ship!=null?m.ship:(+t.costo_envio||+t.envio||0)); if(t.origen)m.origen=t.origen; });
+  Object.keys(cr).forEach(k=>{ const c=cr[k]; if(!c)return; const nr=c.numero_recibo||c.id||String(k).replace(/^recibo_/,''); const m=(map[nr]=map[nr]||{recibo:nr}); m.cliente=c.nombre_cliente||c.cliente_nombre||m.cliente||'Cliente en linea'; m.tel=c.whatsapp_cliente||m.tel; if(c.total!=null)m.total=+c.total; else if(m.total==null)m.total=+c.monto_revertir||0; m.items=resolveItems(c.items); m.fecha=c.fecha||m.fecha; const sh=+c.costo_envio||+c.envio||(c.envio&&+c.envio.costo)||0; if(sh) m.ship=sh; if(c.tipo_descuento) m.descTipo=c.tipo_descuento; if(c.monto_descuento!=null||c.descuento!=null) m.descMonto=+c.monto_descuento||+c.descuento||0; if(c.origen)m.origen=c.origen; });
   const list=Object.values(map);
   PEDIDOS=PEDIDOS.filter(p=>!p.cloud);
   VENTAS=VENTAS.filter(v=>!v.cloud);
@@ -1171,7 +1171,7 @@ function rebuildCloudRecibos(){
   list.forEach(m=>{
     if(DELIVERED_ONLINE[m.recibo]||CANCELADOS[m.recibo]) return; /* ya entregado o cancelado: no reaparece en Inicio ni en Pedidos */
     const pago=m.credito?'Cr\u00e9dito':(m.estado_pago==='pendiente'?'Pendiente':'Pagado');
-    PEDIDOS.unshift({ cloud:true, recibo:m.recibo, origen:m.origen||'Tienda en Linea', cliente:m.cliente||'Cliente en linea', tel:m.tel||'', items:m.items||[], total:+m.total||0, ship:+m.ship||0, descMonto:(m.descMonto!=null?+m.descMonto:null), descTipo:m.descTipo||'', estado:'Pendiente', pago, fecha:m.fecha||'' });
+    PEDIDOS.unshift({ cloud:true, recibo:m.recibo, origen:m.origen||'Tienda en Línea', cliente:m.cliente||'Cliente en linea', tel:m.tel||'', items:m.items||[], total:+m.total||0, ship:+m.ship||0, descMonto:(m.descMonto!=null?+m.descMonto:null), descTipo:m.descTipo||'', estado:'Pendiente', pago, fecha:m.fecha||'' });
     /* El ingreso NO se registra al llegar el pedido: se registra al ENTREGARLO (contado o abono). */
   });
 }
